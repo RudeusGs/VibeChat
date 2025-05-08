@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "646301074138",
+    "firebase_url": "https://vibechat-4c981-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "vibechat-4c981",
+    "storage_bucket": "vibechat-4c981.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:646301074138:android:49b63085e4384712551be3",
+        "android_client_info": {
+          "package_name": "com.rudeusgrey.vibechat"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDhNZj4SkeA3Ieu4s_NVax0ewNyy9xnQnU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

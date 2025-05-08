@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">VibeChat</string>
+    <string name="login">Đăng nhập</string>
+    <string name="register">Đăng ký</string>
+    <string name="email">Email</string>
+    <string name="password">Mật khẩu</string>
+    <string name="username">Tên người dùng</string>
+    <string name="confirm_password">Xác nhận mật khẩu</string>
+    <string name="forgot_password">Quên mật khẩu?</string>
+    <string name="dont_have_account">Chưa có tài khoản?</string>
+    <string name="already_have_account">Đã có tài khoản?</string>
+    <string name="create_account">Tạo tài khoản</string>
+    <string name="login_subtitle">Đăng nhập để kết nối với bạn bè</string>
+    <string name="register_subtitle">Tạo tài khoản để bắt đầu trò chuyện</string>
+    <string name="or_continue_with">Hoặc tiếp tục với</string>
+    <string name="google_login">Đăng nhập với Google</string>
+    <string name="facebook_login">Đăng nhập với Facebook</string>
+    <string name="phone_login">Đăng nhập với số điện thoại</string>
+    <string name="app_logo">Logo ứng dụng</string>
+    <string name="back">Quay lại</string>
+    <string name="password_helper">Mật khẩu phải có ít nhất 6 ký tự</string>
+    <string name="error_empty_fields">Vui lòng nhập đầy đủ thông tin</string>
+    <string name="error_invalid_email">Email không hợp lệ</string>
+    <string name="error_password_too_short">Mật khẩu phải có ít nhất 6 ký tự</string>
+    <string name="error_passwords_dont_match">Mật khẩu xác nhận không khớp</string>
+    <string name="login_success">Đăng nhập thành công</string>
+    <string name="login_failed">Đăng nhập thất bại</string>
+    <string name="register_success">Đăng ký thành công</string>
+    <string name="register_failed">Đăng ký thất bại</string>
+    <string name="search_friends">Tìm kiếm bạn bè</string>
+    <string name="add_friend">Thêm bạn</string>
+    <string name="send">Gửi</string>
+    <string name="attach">Đính kèm</string>
+    <string name="menu">Menu</string>
+</resources>
