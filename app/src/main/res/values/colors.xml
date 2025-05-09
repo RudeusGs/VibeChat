@@ -9,4 +9,10 @@
     <color name="colorTextSecondary">#718096</color>
     <color name="colorError">#E53E3E</color>
     <color name="colorSuccess">#38A169</color>
+    <color name="zalo_card_background">#F5F6FA</color>
+    <color name="zalo_border">#E0E0E0</color>
+    <color name="zalo_text_primary">#1A1A1A</color>
+    <color name="zalo_text_secondary">#666666</color>
+    <color name="zalo_button_text">#007AFF</color>
+    <color name="zalo_button_background">#E6F0FA</color>
 </resources>

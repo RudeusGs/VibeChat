@@ -3,24 +3,24 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="16dp"
-    android:layout_marginVertical="4dp"
-    app:cardBackgroundColor="@color/colorSurface"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="2dp">
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="2dp"
+    app:cardBackgroundColor="@color/zalo_card_background"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="1dp">
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:padding="12dp">
+        android:padding="8dp">
 
         <de.hdodenhof.circleimageview.CircleImageView
             android:id="@+id/profileImageView"
-            android:layout_width="50dp"
-            android:layout_height="50dp"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
             android:src="@drawable/default_avatar"
-            app:civ_border_color="@color/colorBackground"
-            app:civ_border_width="1dp"
+            app:civ_border_color="@color/zalo_border"
+            app:civ_border_width="0.5dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -28,8 +28,8 @@
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
-            android:layout_marginEnd="12dp"
+            android:layout_marginStart="10dp"
+            android:layout_marginEnd="8dp"
             android:orientation="vertical"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/unfriendButton"
@@ -42,38 +42,41 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="@color/colorTextPrimary"
-                android:textSize="16sp"
+                android:textColor="@color/zalo_text_primary"
+                android:textSize="15sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/lastMessageTextView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="@color/colorTextSecondary"
-                android:textSize="14sp" />
+                android:textColor="@color/zalo_text_secondary"
+                android:textSize="13sp" />
 
             <TextView
                 android:id="@+id/timestampTextView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="2dp"
+                android:layout_marginTop="1dp"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:textColor="@color/colorTextSecondary"
-                android:textSize="12sp" />
+                android:textColor="@color/zalo_text_secondary"
+                android:textSize="11sp" />
         </LinearLayout>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/unfriendButton"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="42dp"
+            android:minWidth="64dp"
             android:text="Hủy kết bạn"
             android:textAllCaps="false"
-            app:cornerRadius="20dp"
+            android:textColor="@color/zalo_button_text"
+            app:backgroundTint="@color/zalo_button_background"
+            app:cornerRadius="16dp"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />

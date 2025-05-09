@@ -2,8 +2,8 @@ package com.rudeusgrey.vibechat;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
-import android.widget.ImageButton;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
@@ -16,8 +16,11 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
     private RecyclerView friendsRecyclerView, friendRequestsRecyclerView;
@@ -53,7 +56,6 @@ public class MainActivity extends AppCompatActivity {
         friendRequestsRecyclerView = findViewById(R.id.friendRequestsRecyclerView);
         friendsHeaderTextView = findViewById(R.id.friendsHeaderTextView);
         requestsHeaderTextView = findViewById(R.id.requestsHeaderTextView);
-        ImageButton searchButton = findViewById(R.id.searchButton);
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottomNavigationView);
 
         friendsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -80,10 +82,6 @@ public class MainActivity extends AppCompatActivity {
                 filterFriends(newText.trim());
                 return true;
             }
-        });
-
-        searchButton.setOnClickListener(v -> {
-            startActivity(new Intent(MainActivity.this, FriendsListActivity.class));
         });
 
         bottomNavigationView.setOnNavigationItemSelectedListener(item -> {
@@ -117,45 +115,74 @@ public class MainActivity extends AppCompatActivity {
                             RegisterActivity.User user = userSnapshot.getValue(RegisterActivity.User.class);
                             if (user != null) {
                                 String chatId = getChatId(mAuth.getCurrentUser().getUid(), friendId);
-                                chatsRef.child(chatId).orderByChild("timestamp").limitToLast(1).addListenerForSingleValueEvent(new ValueEventListener() {
+                                chatsRef.child(chatId).child("messages").orderByChild("timestamp").limitToLast(1).addValueEventListener(new ValueEventListener() {
                                     @Override
                                     public void onDataChange(DataSnapshot chatSnapshot) {
                                         String lastMessage = "";
                                         String timestamp = "";
                                         boolean isLastMessageFromMe = false;
+                                        Log.d("MainActivity", "Chat data for " + chatId + ": " + chatSnapshot.toString());
                                         if (chatSnapshot.hasChildren()) {
                                             DataSnapshot lastMsg = chatSnapshot.getChildren().iterator().next();
-                                            lastMessage = lastMsg.child("text").getValue(String.class);
-                                            timestamp = lastMsg.child("timestamp").getValue(String.class);
+                                            lastMessage = lastMsg.child("content").getValue(String.class);
+                                            Long timestampValue = lastMsg.child("timestamp").getValue(Long.class);
                                             String senderId = lastMsg.child("senderId").getValue(String.class);
                                             isLastMessageFromMe = senderId != null && senderId.equals(mAuth.getCurrentUser().getUid());
+                                            if (timestampValue != null) {
+                                                timestamp = formatTimestamp(timestampValue);
+                                            }
+                                        } else {
+                                            Log.w("MainActivity", "No messages found for chatId: " + chatId);
                                         }
-                                        Friend friend = new Friend(friendId, user.username, lastMessage, timestamp, isLastMessageFromMe);
-                                        friendList.add(friend);
-                                        filteredFriendList.add(friend);
+                                        Friend updatedFriend = new Friend(friendId, user.username, lastMessage, timestamp, isLastMessageFromMe);
+                                        int index = -1;
+                                        for (int i = 0; i < friendList.size(); i++) {
+                                            if (friendList.get(i).id.equals(friendId)) {
+                                                index = i;
+                                                break;
+                                            }
+                                        }
+                                        if (index >= 0) {
+                                            friendList.set(index, updatedFriend);
+                                            filteredFriendList.set(index, updatedFriend);
+                                        } else {
+                                            friendList.add(updatedFriend);
+                                            filteredFriendList.add(updatedFriend);
+                                        }
                                         friendAdapter.notifyDataSetChanged();
                                         updateFriendsVisibility();
                                     }
 
                                     @Override
-                                    public void onCancelled(DatabaseError error) {}
+                                    public void onCancelled(DatabaseError error) {
+                                        Log.e("MainActivity", "Error loading chat data: " + error.getMessage());
+                                    }
                                 });
                             }
                         }
 
                         @Override
-                        public void onCancelled(DatabaseError error) {}
+                        public void onCancelled(DatabaseError error) {
+                            Log.e("MainActivity", "Error loading user data: " + error.getMessage());
+                        }
                     });
                 }
             }
 
             @Override
-            public void onCancelled(DatabaseError error) {}
+            public void onCancelled(DatabaseError error) {
+                Log.e("MainActivity", "Error loading friends: " + error.getMessage());
+            }
         });
     }
 
     private String getChatId(String user1, String user2) {
         return user1.compareTo(user2) < 0 ? user1 + "_" + user2 : user2 + "_" + user1;
+    }
+
+    private String formatTimestamp(long timestamp) {
+        SimpleDateFormat sdf = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        return sdf.format(new Date(timestamp));
     }
 
     private void filterFriends(String query) {

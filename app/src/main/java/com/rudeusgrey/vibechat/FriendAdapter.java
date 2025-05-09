@@ -18,7 +18,7 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.ViewHolder
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_friend, parent, false);
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_friend_chat, parent, false);
         return new ViewHolder(view);
     }
 
@@ -27,19 +27,23 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.ViewHolder
         MainActivity.Friend friend = friends.get(position);
         holder.friendNameTextView.setText(friend.username);
         String lastMessage = friend.isLastMessageFromMe ? "Bạn: " + friend.lastMessage : friend.lastMessage;
+        Log.d("FriendAdapter", "Friend: " + friend.username + ", LastMessage: " + lastMessage + ", Timestamp: " + friend.timestamp);
+
         if (lastMessage != null && !lastMessage.isEmpty()) {
             holder.lastMessageTextView.setText(lastMessage);
             holder.lastMessageTextView.setVisibility(View.VISIBLE);
         } else {
-            holder.lastMessageTextView.setVisibility(View.GONE);
+            holder.lastMessageTextView.setText("No message");
+            holder.lastMessageTextView.setVisibility(View.VISIBLE);
         }
         if (friend.timestamp != null && !friend.timestamp.isEmpty()) {
             holder.timestampTextView.setText(friend.timestamp);
             holder.timestampTextView.setVisibility(View.VISIBLE);
         } else {
-            holder.timestampTextView.setVisibility(View.GONE);
+            holder.timestampTextView.setText("No time");
+            holder.timestampTextView.setVisibility(View.VISIBLE);
         }
-        Log.d("FriendAdapter", "Binding friend: " + friend.username + ", Last message: " + lastMessage);
+
         holder.itemView.setOnClickListener(v -> {
             Intent intent = new Intent(v.getContext(), ChatActivity.class);
             intent.putExtra("friendId", friend.id);

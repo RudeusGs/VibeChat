@@ -1,6 +1,5 @@
 package com.rudeusgrey.vibechat;
 
-import android.content.Intent;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -12,92 +11,55 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-public class SearchResultAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
-    private static final int VIEW_TYPE_FRIEND = 0;
-    private static final int VIEW_TYPE_SEARCH = 1;
-
+public class SearchResultAdapter extends RecyclerView.Adapter<SearchResultAdapter.ViewHolder> {
     private List<FriendsListActivity.FriendUser> users;
-    private Consumer<String> onFriendAction;
+    private Consumer<String> friendActionCallback;
     private Map<String, Boolean> friendStatusMap;
-    private Map<String, Boolean> pendingRequestMap;
-    private boolean isSearchMode;
+    private Map<String, Boolean> sentRequestMap;
+    private boolean isSearchMode = false;
 
-    public SearchResultAdapter(List<FriendsListActivity.FriendUser> users, Consumer<String> onFriendAction,
-                               Map<String, Boolean> friendStatusMap, Map<String, Boolean> pendingRequestMap) {
+    public SearchResultAdapter(List<FriendsListActivity.FriendUser> users, Consumer<String> friendActionCallback,
+                               Map<String, Boolean> friendStatusMap, Map<String, Boolean> sentRequestMap) {
         this.users = users;
-        this.onFriendAction = onFriendAction;
+        this.friendActionCallback = friendActionCallback;
         this.friendStatusMap = friendStatusMap;
-        this.pendingRequestMap = pendingRequestMap;
-        this.isSearchMode = false;
+        this.sentRequestMap = sentRequestMap;
     }
 
-    public void setSearchMode(boolean isSearchMode) {
-        this.isSearchMode = isSearchMode;
-        Log.d("SearchResultAdapter", "Set search mode: " + isSearchMode);
+    public void setSearchMode(boolean searchMode) {
+        this.isSearchMode = searchMode;
         notifyDataSetChanged();
     }
 
     @Override
-    public int getItemViewType(int position) {
-        return isSearchMode ? VIEW_TYPE_SEARCH : VIEW_TYPE_FRIEND;
+    public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_friend, parent, false);
+        return new ViewHolder(view);
     }
 
     @Override
-    public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        if (viewType == VIEW_TYPE_FRIEND) {
-            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_friend, parent, false);
-            Log.d("SearchResultAdapter", "Creating FriendViewHolder, Layout: item_friend");
-            return new FriendViewHolder(view);
-        } else {
-            View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_search_result, parent, false);
-            Log.d("SearchResultAdapter", "Creating SearchViewHolder, Layout: item_search_result");
-            return new SearchViewHolder(view);
-        }
-    }
-
-    @Override
-    public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
+    public void onBindViewHolder(ViewHolder holder, int position) {
         FriendsListActivity.FriendUser user = users.get(position);
-        Log.d("SearchResultAdapter", "Binding user: " + user.username + ", isSearchMode: " + isSearchMode);
+        holder.friendNameTextView.setText(user.username);
+        Log.d("SearchResultAdapter", "Binding user: " + user.username);
 
-        if (holder instanceof FriendViewHolder) {
-            FriendViewHolder friendHolder = (FriendViewHolder) holder;
-            friendHolder.friendNameTextView.setText(user.username);
-            String lastMessage = user.isLastMessageFromMe ? "Bạn: " + user.lastMessage : user.lastMessage;
-            friendHolder.lastMessageTextView.setText(lastMessage != null ? lastMessage : "");
-            friendHolder.timestampTextView.setText(user.timestamp != null ? user.timestamp : "");
-            Log.d("SearchResultAdapter", "Friend mode - Last message: " + lastMessage + ", Timestamp: " + user.timestamp);
-            friendHolder.itemView.setOnClickListener(v -> {
-                Intent intent = new Intent(v.getContext(), ChatActivity.class);
-                intent.putExtra("friendId", user.uid);
-                v.getContext().startActivity(intent);
-            });
-        } else if (holder instanceof SearchViewHolder) {
-            SearchViewHolder searchHolder = (SearchViewHolder) holder;
-            searchHolder.userNameTextView.setText(user.username);
-            searchHolder.userStatusTextView.setText(user.status != null ? user.status : "Đang hoạt động");
-            String userId = user.uid;
-            boolean isFriend = friendStatusMap.containsKey(userId);
-            boolean isPending = pendingRequestMap.containsKey(userId);
-            if (isFriend) {
-                searchHolder.addFriendButton.setText("Hủy kết bạn");
-            } else if (isPending) {
-                searchHolder.addFriendButton.setText("Hủy gửi");
+        if (isSearchMode) {
+            if (friendStatusMap.containsKey(user.uid)) {
+                holder.actionButton.setText("Hủy kết bạn");
+                holder.actionButton.setVisibility(View.VISIBLE);
+            } else if (sentRequestMap.containsKey(user.uid)) {
+                holder.actionButton.setText("Hủy yêu cầu");
+                holder.actionButton.setVisibility(View.VISIBLE);
             } else {
-                searchHolder.addFriendButton.setText("Kết bạn");
+                holder.actionButton.setText("Kết bạn");
+                holder.actionButton.setVisibility(View.VISIBLE);
             }
-            searchHolder.addFriendButton.setOnClickListener(v -> {
-                Log.d("SearchResultAdapter", "Friend action for: " + userId + ", Action: " + searchHolder.addFriendButton.getText());
-                onFriendAction.accept(userId);
-                // Update pendingRequestMap and notify adapter if request is sent
-                if (searchHolder.addFriendButton.getText().equals("Kết bạn")) {
-                    pendingRequestMap.put(userId, true);
-                } else if (searchHolder.addFriendButton.getText().equals("Hủy gửi")) {
-                    pendingRequestMap.remove(userId);
-                }
-                notifyDataSetChanged();
-            });
+        } else {
+            holder.actionButton.setText("Hủy kết bạn");
+            holder.actionButton.setVisibility(View.VISIBLE);
         }
+
+        holder.actionButton.setOnClickListener(v -> friendActionCallback.accept(user.uid));
     }
 
     @Override
@@ -105,26 +67,14 @@ public class SearchResultAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         return users.size();
     }
 
-    public static class FriendViewHolder extends RecyclerView.ViewHolder {
-        TextView friendNameTextView, lastMessageTextView, timestampTextView;
+    public static class ViewHolder extends RecyclerView.ViewHolder {
+        TextView friendNameTextView;
+        MaterialButton actionButton;
 
-        public FriendViewHolder(View itemView) {
+        public ViewHolder(View itemView) {
             super(itemView);
             friendNameTextView = itemView.findViewById(R.id.friendNameTextView);
-            lastMessageTextView = itemView.findViewById(R.id.lastMessageTextView);
-            timestampTextView = itemView.findViewById(R.id.timestampTextView);
-        }
-    }
-
-    public static class SearchViewHolder extends RecyclerView.ViewHolder {
-        TextView userNameTextView, userStatusTextView;
-        MaterialButton addFriendButton;
-
-        public SearchViewHolder(View itemView) {
-            super(itemView);
-            userNameTextView = itemView.findViewById(R.id.userNameTextView);
-            userStatusTextView = itemView.findViewById(R.id.userStatusTextView);
-            addFriendButton = itemView.findViewById(R.id.addFriendButton);
+            actionButton = itemView.findViewById(R.id.unfriendButton);
         }
     }
 }

@@ -11,5 +11,5 @@
     <item
         android:id="@+id/nav_info"
         android:icon="@drawable/ic_info"
-        android:title="Thông tin" />
+        android:title="Cá nhân" />
 </menu>

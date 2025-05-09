@@ -29,7 +29,7 @@ public class FriendsListActivity extends AppCompatActivity {
     private SearchView searchView;
     private TextView emptyStateTextView;
     private FirebaseAuth mAuth;
-    private DatabaseReference usersRef, friendsRef, friendRequestsRef, chatsRef;
+    private DatabaseReference usersRef, friendsRef, friendRequestsRef;
     private List<FriendUser> userList = new ArrayList<>();
     private Map<String, Boolean> friendStatusMap = new HashMap<>();
     private Map<String, Boolean> sentRequestMap = new HashMap<>();
@@ -51,7 +51,6 @@ public class FriendsListActivity extends AppCompatActivity {
         usersRef = FirebaseDatabase.getInstance().getReference("users");
         friendsRef = FirebaseDatabase.getInstance().getReference("friends").child(mAuth.getCurrentUser().getUid());
         friendRequestsRef = FirebaseDatabase.getInstance().getReference("friend_requests");
-        chatsRef = FirebaseDatabase.getInstance().getReference("chats");
 
         friendsRecyclerView = findViewById(R.id.friendsRecyclerView);
         searchView = findViewById(R.id.searchView);
@@ -114,7 +113,6 @@ public class FriendsListActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // Refresh sent requests to ensure pendingRequestMap is up-to-date
         loadSentRequests();
         if (searchView.getQuery().toString().trim().isEmpty()) {
             loadFriendsList();
@@ -172,10 +170,10 @@ public class FriendsListActivity extends AppCompatActivity {
         userList.clear();
         adapter.setSearchMode(false);
         Log.d("FriendsList", "Loading friends list, search mode: false");
-        friendsRef.addListenerForSingleValueEvent(new ValueEventListener() {
+        friendsRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
-                userList.clear(); // Ensure list is cleared
+                userList.clear();
                 for (DataSnapshot child : snapshot.getChildren()) {
                     String friendId = child.getKey();
                     Log.d("FriendsList", "Processing friend: " + friendId);
@@ -186,46 +184,19 @@ public class FriendsListActivity extends AppCompatActivity {
                             if (baseUser != null) {
                                 baseUser.uid = friendId;
                                 FriendUser user = new FriendUser(baseUser);
-                                String chatId = getChatId(mAuth.getCurrentUser().getUid(), friendId);
-                                Log.d("FriendsList", "Chat ID: " + chatId);
-                                chatsRef.child(chatId).orderByChild("timestamp").limitToLast(1).addListenerForSingleValueEvent(new ValueEventListener() {
-                                    @Override
-                                    public void onDataChange(DataSnapshot chatSnapshot) {
-                                        String lastMessage = "";
-                                        String timestamp = "";
-                                        boolean isLastMessageFromMe = false;
-                                        if (chatSnapshot.hasChildren()) {
-                                            DataSnapshot lastMsg = chatSnapshot.getChildren().iterator().next();
-                                            lastMessage = lastMsg.child("text").getValue(String.class);
-                                            timestamp = lastMsg.child("timestamp").getValue(String.class);
-                                            String senderId = lastMsg.child("senderId").getValue(String.class);
-                                            isLastMessageFromMe = senderId != null && senderId.equals(mAuth.getCurrentUser().getUid());
-                                            Log.d("FriendsList", "Last message: " + lastMessage + ", Timestamp: " + timestamp);
-                                        }
-                                        user.lastMessage = lastMessage != null ? lastMessage : "";
-                                        user.timestamp = timestamp != null ? timestamp : "";
-                                        user.isLastMessageFromMe = isLastMessageFromMe;
-
-                                        boolean exists = false;
-                                        for (FriendUser existingUser : userList) {
-                                            if (existingUser.uid.equals(user.uid)) {
-                                                exists = true;
-                                                break;
-                                            }
-                                        }
-                                        if (!exists) {
-                                            userList.add(user);
-                                            Log.d("FriendsList", "Added user: " + user.username + ", List size: " + userList.size());
-                                            adapter.notifyItemInserted(userList.size() - 1);
-                                        }
-                                        updateUIState(userList.isEmpty(), false);
+                                boolean exists = false;
+                                for (FriendUser existingUser : userList) {
+                                    if (existingUser.uid.equals(user.uid)) {
+                                        exists = true;
+                                        break;
                                     }
-
-                                    @Override
-                                    public void onCancelled(DatabaseError error) {
-                                        Toast.makeText(FriendsListActivity.this, "Lỗi tải tin nhắn cuối: " + error.getMessage(), Toast.LENGTH_SHORT).show();
-                                    }
-                                });
+                                }
+                                if (!exists) {
+                                    userList.add(user);
+                                    Log.d("FriendsList", "Added user: " + user.username + ", List size: " + userList.size());
+                                    adapter.notifyItemInserted(userList.size() - 1);
+                                }
+                                updateUIState(userList.isEmpty(), false);
                             }
                         }
 
@@ -245,10 +216,6 @@ public class FriendsListActivity extends AppCompatActivity {
         });
     }
 
-    private String getChatId(String user1, String user2) {
-        return user1.compareTo(user2) < 0 ? user1 + "_" + user2 : user2 + "_" + user1;
-    }
-
     private void searchUsers(String query) {
         Log.d("SearchUsers", "Searching with query: " + query);
         if (query.isEmpty() && searchView.getQuery().length() == 0) {
@@ -256,7 +223,6 @@ public class FriendsListActivity extends AppCompatActivity {
             return;
         }
 
-        // Fetch sent requests before searching to ensure pendingRequestMap is up-to-date
         friendRequestsRef.child(mAuth.getCurrentUser().getUid()).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
@@ -283,9 +249,6 @@ public class FriendsListActivity extends AppCompatActivity {
                                 if (baseUser != null) {
                                     baseUser.uid = userId;
                                     FriendUser user = new FriendUser(baseUser);
-                                    user.lastMessage = "";
-                                    user.timestamp = "";
-                                    user.isLastMessageFromMe = false;
                                     userList.add(user);
                                 }
                             }
@@ -375,10 +338,6 @@ public class FriendsListActivity extends AppCompatActivity {
     }
 
     public static class FriendUser extends RegisterActivity.User {
-        public String lastMessage;
-        public String timestamp;
-        public boolean isLastMessageFromMe;
-
         public FriendUser(RegisterActivity.User baseUser) {
             this.uid = baseUser.uid;
             this.username = baseUser.username;
@@ -386,9 +345,6 @@ public class FriendsListActivity extends AppCompatActivity {
             this.photoUrl = baseUser.photoUrl;
             this.status = baseUser.status;
             this.createdAt = baseUser.createdAt;
-            this.lastMessage = "";
-            this.timestamp = "";
-            this.isLastMessageFromMe = false;
         }
     }
 }

@@ -8,10 +8,11 @@
     <!-- Tin nhắn từ người khác -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/receivedMessageLayout"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginEnd="80dp"
         app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
         <de.hdodenhof.circleimageview.CircleImageView
@@ -66,15 +67,24 @@
                     android:textSize="10sp" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <ImageView
+            android:id="@+id/receivedReactionImageView"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:visibility="gone"
+            app:layout_constraintStart_toStartOf="@id/receivedMessageCard"
+            app:layout_constraintTop_toBottomOf="@id/receivedMessageCard" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <!-- Tin nhắn từ người dùng hiện tại -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:id="@+id/sentMessageLayout"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginStart="80dp"
         android:visibility="gone"
+        app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
@@ -112,6 +122,14 @@
                     android:alpha="0.7" />
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
+
+        <ImageView
+            android:id="@+id/sentReactionImageView"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="@id/sentMessageCard"
+            app:layout_constraintTop_toBottomOf="@id/sentMessageCard" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -16,7 +16,9 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ChatActivity extends AppCompatActivity {
     private RecyclerView chatRecyclerView;
@@ -106,6 +108,7 @@ public class ChatActivity extends AppCompatActivity {
                 for (DataSnapshot child : snapshot.getChildren()) {
                     Message message = child.getValue(Message.class);
                     if (message != null) {
+                        message.messageId = child.getKey(); // Lưu messageId từ key của snapshot
                         messageList.add(message);
                     }
                 }
@@ -133,13 +136,18 @@ public class ChatActivity extends AppCompatActivity {
     public static class Message {
         public String senderId, content;
         public long timestamp;
+        public Map<String, String> reactions;
+        public String messageId; // Thêm trường messageId
 
-        public Message() {}
+        public Message() {
+            this.reactions = new HashMap<>();
+        }
 
         public Message(String senderId, String content, long timestamp) {
             this.senderId = senderId;
             this.content = content;
             this.timestamp = timestamp;
+            this.reactions = new HashMap<>();
         }
     }
 }

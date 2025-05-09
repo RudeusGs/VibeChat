@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:background="@drawable/reaction_menu_background"
+    android:padding="8dp">
+
+    <ImageView
+        android:id="@+id/reaction_like"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginEnd="8dp"
+        android:src="@drawable/ic_like"
+        android:contentDescription="Like" />
+
+    <ImageView
+        android:id="@+id/reaction_love"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginEnd="8dp"
+        android:src="@drawable/ic_love"
+        android:contentDescription="Love" />
+
+    <ImageView
+        android:id="@+id/reaction_haha"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginEnd="8dp"
+        android:src="@drawable/ic_haha"
+        android:contentDescription="Haha" />
+
+    <ImageView
+        android:id="@+id/reaction_wow"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginEnd="8dp"
+        android:src="@drawable/ic_wow"
+        android:contentDescription="Wow" />
+
+    <ImageView
+        android:id="@+id/reaction_sad"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginEnd="8dp"
+        android:src="@drawable/ic_sad"
+        android:contentDescription="Sad" />
+
+    <ImageView
+        android:id="@+id/reaction_angry"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@drawable/ic_angry"
+        android:contentDescription="Angry" />
+</LinearLayout>
