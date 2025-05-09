@@ -10,6 +10,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
+import com.bumptech.glide.Glide;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -53,11 +54,21 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
             holder.sentMessageLayout.setVisibility(View.VISIBLE);
             holder.receivedMessageLayout.setVisibility(View.GONE);
 
-            holder.sentMessageTextView.setText(message.content);
+            if (message.imageUrl != null) {
+                holder.sentImageView.setVisibility(View.VISIBLE);
+                holder.sentMessageTextView.setVisibility(View.GONE);
+                Glide.with(holder.itemView.getContext())
+                        .load(message.imageUrl)
+                        .into(holder.sentImageView);
+            } else {
+                holder.sentImageView.setVisibility(View.GONE);
+                holder.sentMessageTextView.setVisibility(View.VISIBLE);
+                holder.sentMessageTextView.setText(message.content);
+            }
+
             String time = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(message.timestamp));
             holder.sentTimeTextView.setText(time);
 
-            // Hiển thị phản ứng của người dùng hiện tại
             String userReaction = message.reactions.get(currentUserId);
             if (userReaction != null) {
                 holder.sentReactionImageView.setVisibility(View.VISIBLE);
@@ -69,7 +80,18 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
             holder.sentMessageLayout.setVisibility(View.GONE);
             holder.receivedMessageLayout.setVisibility(View.VISIBLE);
 
-            holder.receivedMessageTextView.setText(message.content);
+            if (message.imageUrl != null) {
+                holder.receivedImageView.setVisibility(View.VISIBLE);
+                holder.receivedMessageTextView.setVisibility(View.GONE);
+                Glide.with(holder.itemView.getContext())
+                        .load(message.imageUrl)
+                        .into(holder.receivedImageView);
+            } else {
+                holder.receivedImageView.setVisibility(View.GONE);
+                holder.receivedMessageTextView.setVisibility(View.VISIBLE);
+                holder.receivedMessageTextView.setText(message.content);
+            }
+
             String time = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(message.timestamp));
             holder.receivedTimeTextView.setText(time);
 
@@ -95,7 +117,6 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
                 });
             }
 
-            // Hiển thị phản ứng của người dùng hiện tại
             String userReaction = message.reactions.get(currentUserId);
             if (userReaction != null) {
                 holder.receivedReactionImageView.setVisibility(View.VISIBLE);
@@ -105,7 +126,6 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
             }
         }
 
-        // Xử lý long press để thả cảm xúc
         holder.itemView.setOnLongClickListener(v -> {
             showReactionMenu(v.getContext(), message, holder.getAdapterPosition(), holder.itemView);
             return true;
@@ -118,11 +138,9 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
     }
 
     private void showReactionMenu(Context context, ChatActivity.Message message, int position, View anchor) {
-        // Tạo layout cho menu phản ứng
         LayoutInflater inflater = LayoutInflater.from(context);
         View reactionMenuView = inflater.inflate(R.layout.reaction_menu, null);
 
-        // Tạo PopupWindow
         PopupWindow reactionPopup = new PopupWindow(
                 reactionMenuView,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -130,12 +148,10 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
                 true
         );
 
-        // Thiết lập bóng đổ và khả năng tương tác
         reactionPopup.setElevation(8);
         reactionPopup.setBackgroundDrawable(null);
         reactionPopup.setOutsideTouchable(true);
 
-        // Xử lý sự kiện nhấn vào từng biểu tượng phản ứng
         reactionMenuView.findViewById(R.id.reaction_like).setOnClickListener(v -> {
             updateReaction(message, position, "like");
             reactionPopup.dismiss();
@@ -166,24 +182,21 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
             reactionPopup.dismiss();
         });
 
-        // Hiển thị PopupWindow ngay phía trên tin nhắn
         int[] location = new int[2];
         anchor.getLocationOnScreen(location);
-        reactionPopup.showAsDropDown(anchor, 0, -anchor.getHeight() - 60); // Hiển thị phía trên tin nhắn
+        reactionPopup.showAsDropDown(anchor, 0, -anchor.getHeight() - 60);
     }
 
     private void updateReaction(ChatActivity.Message message, int position, String reaction) {
         String chatId = getChatId(currentUserId, message.senderId);
         String messageId = message.messageId;
         if (messageId != null) {
-            // Xóa phản ứng cũ (nếu có)
             if (message.reactions.containsKey(currentUserId)) {
                 message.reactions.remove(currentUserId);
             }
-            // Thêm phản ứng mới
             message.reactions.put(currentUserId, reaction);
             chatsRef.child(chatId).child("messages").child(messageId).child("reactions").setValue(message.reactions);
-            notifyItemChanged(position); // Cập nhật giao diện
+            notifyItemChanged(position);
         }
     }
 
@@ -219,6 +232,7 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
         TextView receivedSenderTextView, receivedMessageTextView, receivedTimeTextView;
         TextView sentMessageTextView, sentTimeTextView;
         ImageView receivedReactionImageView, sentReactionImageView;
+        ImageView receivedImageView, sentImageView;
 
         public ViewHolder(View itemView) {
             super(itemView);
@@ -231,6 +245,8 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
             sentTimeTextView = itemView.findViewById(R.id.sentTimeTextView);
             receivedReactionImageView = itemView.findViewById(R.id.receivedReactionImageView);
             sentReactionImageView = itemView.findViewById(R.id.sentReactionImageView);
+            receivedImageView = itemView.findViewById(R.id.receivedImageView);
+            sentImageView = itemView.findViewById(R.id.sentImageView);
         }
     }
 }
