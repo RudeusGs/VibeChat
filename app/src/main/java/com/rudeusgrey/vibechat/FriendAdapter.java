@@ -26,7 +26,15 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.ViewHolder
     public void onBindViewHolder(ViewHolder holder, int position) {
         MainActivity.Friend friend = friends.get(position);
         holder.friendNameTextView.setText(friend.username);
-        String lastMessage = friend.isLastMessageFromMe ? "Bạn: " + friend.lastMessage : friend.lastMessage;
+
+
+        String lastMessage;
+        if (friend.isImage) {
+            lastMessage = friend.isLastMessageFromMe ? "Bạn: Đã gửi hình ảnh" : "Đã gửi hình ảnh";
+        } else {
+            lastMessage = friend.isLastMessageFromMe ? "Bạn: " + friend.lastMessage : friend.lastMessage;
+        }
+
         Log.d("FriendAdapter", "Friend: " + friend.username + ", LastMessage: " + lastMessage + ", Timestamp: " + friend.timestamp);
 
         if (lastMessage != null && !lastMessage.isEmpty()) {
@@ -36,6 +44,7 @@ public class FriendAdapter extends RecyclerView.Adapter<FriendAdapter.ViewHolder
             holder.lastMessageTextView.setText("No message");
             holder.lastMessageTextView.setVisibility(View.VISIBLE);
         }
+
         if (friend.timestamp != null && !friend.timestamp.isEmpty()) {
             holder.timestampTextView.setText(friend.timestamp);
             holder.timestampTextView.setVisibility(View.VISIBLE);

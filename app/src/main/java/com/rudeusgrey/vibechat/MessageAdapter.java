@@ -48,8 +48,6 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         ChatActivity.Message message = messages.get(position);
         boolean isSentByCurrentUser = message.senderId.equals(currentUserId);
-
-        // Hiển thị layout tương ứng: gửi hoặc nhận
         if (isSentByCurrentUser) {
             holder.sentMessageLayout.setVisibility(View.VISIBLE);
             holder.receivedMessageLayout.setVisibility(View.GONE);

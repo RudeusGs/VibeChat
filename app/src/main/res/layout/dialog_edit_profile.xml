@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/dialog_background"
+    android:padding="20dp">
+
+    <TextView
+        android:id="@+id/dialogTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Chỉnh sửa thông tin"
+        android:textColor="@color/colorTextPrimary"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <!-- Edit Full Name -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/fullNameInputLayout"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:hint="Họ và tên"
+        app:boxStrokeColor="@color/colorPrimary"
+        app:boxStrokeWidth="1dp"
+        app:boxCornerRadiusTopStart="8dp"
+        app:boxCornerRadiusTopEnd="8dp"
+        app:boxCornerRadiusBottomStart="8dp"
+        app:boxCornerRadiusBottomEnd="8dp"
+        app:startIconDrawable="@drawable/ic_person"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/dialogTitle">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/fullNameEditText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="textPersonName"
+            android:textColor="@color/colorTextPrimary"
+            android:textSize="16sp" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Edit Date of Birth -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/dobInputLayout"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:hint="Ngày sinh (dd/mm/yyyy)"
+        app:boxStrokeColor="@color/colorPrimary"
+        app:boxStrokeWidth="1dp"
+        app:boxCornerRadiusTopStart="8dp"
+        app:boxCornerRadiusTopEnd="8dp"
+        app:boxCornerRadiusBottomStart="8dp"
+        app:boxCornerRadiusBottomEnd="8dp"
+        app:startIconDrawable="@drawable/ic_calendar"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/fullNameInputLayout">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/dobEditText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="date"
+            android:focusable="false"
+            android:textColor="@color/colorTextPrimary"
+            android:textSize="16sp" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Edit Gender -->
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/genderInputLayout"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:hint="Giới tính"
+        app:boxStrokeColor="@color/colorPrimary"
+        app:boxStrokeWidth="1dp"
+        app:boxCornerRadiusTopStart="8dp"
+        app:boxCornerRadiusTopEnd="8dp"
+        app:boxCornerRadiusBottomStart="8dp"
+        app:boxCornerRadiusBottomEnd="8dp"
+        app:startIconDrawable="@drawable/ic_gender"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/dobInputLayout">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/genderEditText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:inputType="text"
+            android:focusable="false"
+            android:textColor="@color/colorTextPrimary"
+            android:textSize="16sp" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <!-- Buttons -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/cancelButton"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="8dp"
+        android:text="Hủy"
+        android:textAllCaps="false"
+        android:textSize="16sp"
+        android:textColor="@color/colorTextSecondary"
+        app:backgroundTint="@android:color/transparent"
+        app:strokeColor="@color/colorTextSecondary"
+        app:strokeWidth="1dp"
+        app:cornerRadius="8dp"
+        app:layout_constraintEnd_toStartOf="@id/saveButton"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/genderInputLayout" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/saveButton"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginStart="8dp"
+        android:text="Lưu"
+        android:textAllCaps="false"
+        android:textSize="16sp"
+        android:textColor="@android:color/white"
+        app:backgroundTint="@color/colorPrimary"
+        app:cornerRadius="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/cancelButton"
+        app:layout_constraintTop_toBottomOf="@id/genderInputLayout" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

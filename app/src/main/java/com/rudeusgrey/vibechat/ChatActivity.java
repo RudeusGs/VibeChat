@@ -21,12 +21,14 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.ChildEventListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 import android.app.ProgressDialog;
+import android.util.Log;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -52,15 +54,17 @@ public class ChatActivity extends AppCompatActivity {
     private ImageButton backButton, menuButton;
     private TextView chatNameTextView, statusTextView;
     private FirebaseAuth mAuth;
-    private DatabaseReference chatsRef, usersRef;
+    private DatabaseReference chatsRef, usersRef, messagesRef;
     private List<Message> messageList = new ArrayList<>();
     private MessageAdapter messageAdapter;
     private String friendId;
     private static final int REQUEST_IMAGE_PICK = 1;
     private static final int REQUEST_STORAGE_PERMISSION = 2;
+    private static final int REQUEST_NOTIFICATION_PERMISSION = 3;
     private ValueEventListener messagesListener;
+    private ChildEventListener notificationListener;
     private final OkHttpClient client = new OkHttpClient();
-    private static final String IMGUR_CLIENT_ID = "c16af2a45269cf2"; // Thay bằng Client ID thật của bạn
+    private static final String IMGUR_CLIENT_ID = "47065d1ba8ace09";
     private ProgressDialog progressDialog;
     private static final Set<String> SUPPORTED_MIME_TYPES = new HashSet<>();
 
@@ -87,6 +91,7 @@ public class ChatActivity extends AppCompatActivity {
 
         chatsRef = FirebaseDatabase.getInstance().getReference("chats");
         usersRef = FirebaseDatabase.getInstance().getReference("users");
+        messagesRef = FirebaseDatabase.getInstance().getReference("chats");
         friendId = getIntent().getStringExtra("friendId");
         if (friendId == null) {
             Toast.makeText(this, "Không tìm thấy ID người bạn", Toast.LENGTH_SHORT).show();
@@ -107,62 +112,33 @@ public class ChatActivity extends AppCompatActivity {
         messageAdapter = new MessageAdapter(messageList, mAuth.getCurrentUser().getUid());
         chatRecyclerView.setAdapter(messageAdapter);
 
+        NotificationHelper.createNotificationChannel(this);
+        NotificationHelper.setCurrentChatFriendId(friendId);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATION_PERMISSION);
+            } else {
+                setupNotificationListener();
+            }
+        } else {
+            setupNotificationListener();
+        }
+
         loadFriendInfo();
         loadMessages();
 
-        sendButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String content = messageEditText.getText().toString().trim();
-                if (!content.isEmpty()) {
-                    sendMessage(content, null);
-                    messageEditText.setText("");
-                }
+        sendButton.setOnClickListener(v -> {
+            String content = messageEditText.getText().toString().trim();
+            if (!content.isEmpty()) {
+                sendMessage(content, null);
+                messageEditText.setText("");
             }
         });
 
-        attachButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                requestStoragePermission();
-            }
-        });
-
-        backButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                finish();
-            }
-        });
-
-        menuButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Toast.makeText(ChatActivity.this, "Tính năng menu đang được phát triển", Toast.LENGTH_SHORT).show();
-            }
-        });
-    }
-
-    private void requestStoragePermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 13+
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
-                    != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.READ_MEDIA_IMAGES},
-                        REQUEST_STORAGE_PERMISSION);
-            } else {
-                openImagePicker();
-            }
-        } else {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                    != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
-                        REQUEST_STORAGE_PERMISSION);
-            } else {
-                openImagePicker();
-            }
-        }
+        attachButton.setOnClickListener(v -> requestStoragePermission());
+        backButton.setOnClickListener(v -> finish());
+        menuButton.setOnClickListener(v -> Toast.makeText(ChatActivity.this, "Tính năng menu đang được phát triển", Toast.LENGTH_SHORT).show());
     }
 
     @Override
@@ -172,17 +148,33 @@ public class ChatActivity extends AppCompatActivity {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 openImagePicker();
             } else {
-                if (!ActivityCompat.shouldShowRequestPermissionRationale(this, permissions[0])) {
-                    Toast.makeText(this, "Quyền truy cập bộ nhớ bị từ chối vĩnh viễn. Vui lòng cấp quyền trong cài đặt.", Toast.LENGTH_LONG).show();
-                } else {
-                    Toast.makeText(this, "Quyền truy cập bộ nhớ bị từ chối", Toast.LENGTH_SHORT).show();
-                }
+                Toast.makeText(this, "Quyền truy cập bộ nhớ bị từ chối", Toast.LENGTH_SHORT).show();
+            }
+        } else if (requestCode == REQUEST_NOTIFICATION_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                setupNotificationListener();
+            }
+        }
+    }
+
+    private void requestStoragePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_MEDIA_IMAGES}, REQUEST_STORAGE_PERMISSION);
+            } else {
+                openImagePicker();
+            }
+        } else {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, REQUEST_STORAGE_PERMISSION);
+            } else {
+                openImagePicker();
             }
         }
     }
 
     private void openImagePicker() {
-        Intent intent = new Intent(Intent.ACTION_PICK);
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         intent.setType("image/*");
         startActivityForResult(intent, REQUEST_IMAGE_PICK);
     }
@@ -197,45 +189,30 @@ public class ChatActivity extends AppCompatActivity {
     }
 
     private void uploadImageToImgur(Uri imageUri) {
-        if (imageUri == null) {
-            Toast.makeText(this, "Không thể chọn hình ảnh", Toast.LENGTH_SHORT).show();
-            return;
-        }
+        if (imageUri == null) return;
 
-        // Kiểm tra MIME type của file
         String mimeType = getFileMimeType(imageUri);
         if (mimeType == null || !SUPPORTED_MIME_TYPES.contains(mimeType.toLowerCase())) {
-            Toast.makeText(this, "Định dạng file không được hỗ trợ. Vui lòng chọn file JPEG, PNG, GIF, BMP, TIFF hoặc WebP.", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Định dạng file không hỗ trợ", Toast.LENGTH_LONG).show();
             return;
         }
 
         progressDialog = new ProgressDialog(this);
-        progressDialog.setMessage("Đang tải ảnh lên...");
+        progressDialog.setMessage("Đang tải ảnh...");
         progressDialog.setCancelable(false);
         progressDialog.show();
 
         new Thread(() -> {
             try {
-                // Chuyển URI thành File
                 File file = uriToFile(imageUri);
-                if (file == null) {
+                if (file == null || file.length() == 0) {
                     runOnUiThread(() -> {
-                        Toast.makeText(ChatActivity.this, "Không thể lấy hình ảnh", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(ChatActivity.this, "Lỗi hình ảnh", Toast.LENGTH_SHORT).show();
                         progressDialog.dismiss();
                     });
                     return;
                 }
 
-                // Đảm bảo file có dữ liệu
-                if (file.length() == 0) {
-                    runOnUiThread(() -> {
-                        Toast.makeText(ChatActivity.this, "File hình ảnh rỗng hoặc bị hỏng", Toast.LENGTH_SHORT).show();
-                        progressDialog.dismiss();
-                    });
-                    return;
-                }
-
-                String extension = getFileExtensionFromMimeType(mimeType);
                 RequestBody requestBody = new MultipartBody.Builder()
                         .setType(MultipartBody.FORM)
                         .addFormDataPart("image", file.getName(), RequestBody.create(file, MediaType.parse(mimeType)))
@@ -252,21 +229,19 @@ public class ChatActivity extends AppCompatActivity {
                     String responseBody = response.body().string();
                     JSONObject json = new JSONObject(responseBody);
                     String imageUrl = json.getJSONObject("data").getString("link");
-
                     runOnUiThread(() -> {
                         sendMessage(null, imageUrl);
                         progressDialog.dismiss();
                     });
                 } else {
-                    String errorBody = response.body() != null ? response.body().string() : "Không có thông tin lỗi";
                     runOnUiThread(() -> {
-                        Toast.makeText(ChatActivity.this, "Tải ảnh lên Imgur thất bại: " + response.code() + " - " + errorBody, Toast.LENGTH_LONG).show();
+                        Toast.makeText(ChatActivity.this, "Tải ảnh thất bại: " + response.code(), Toast.LENGTH_LONG).show();
                         progressDialog.dismiss();
                     });
                 }
             } catch (Exception e) {
                 runOnUiThread(() -> {
-                    Toast.makeText(ChatActivity.this, "Lỗi khi tải ảnh lên: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    Toast.makeText(ChatActivity.this, "Lỗi: " + e.getMessage(), Toast.LENGTH_LONG).show();
                     progressDialog.dismiss();
                 });
             }
@@ -275,40 +250,18 @@ public class ChatActivity extends AppCompatActivity {
 
     private String getFileMimeType(Uri uri) {
         ContentResolver contentResolver = getContentResolver();
-        String mimeType = contentResolver.getType(uri);
-        if (mimeType == null) {
-            // Nếu không lấy được MIME type, thử lấy từ phần mở rộng
-            String path = uri.getPath();
-            if (path != null) {
-                int lastDot = path.lastIndexOf('.');
-                if (lastDot != -1) {
-                    String extension = path.substring(lastDot + 1);
-                    MimeTypeMap mime = MimeTypeMap.getSingleton();
-                    mimeType = mime.getMimeTypeFromExtension(extension);
-                }
-            }
-        }
-        return mimeType;
-    }
-
-    private String getFileExtensionFromMimeType(String mimeType) {
-        if (mimeType != null) {
-            MimeTypeMap mime = MimeTypeMap.getSingleton();
-            return mime.getExtensionFromMimeType(mimeType);
-        }
-        return "jpg"; // Mặc định là jpg nếu không xác định được
+        return contentResolver.getType(uri) != null ? contentResolver.getType(uri) : "image/jpeg";
     }
 
     private File uriToFile(Uri uri) {
         try {
-            ContentResolver contentResolver = getContentResolver();
-            InputStream inputStream = contentResolver.openInputStream(uri);
+            InputStream inputStream = getContentResolver().openInputStream(uri);
             if (inputStream == null) return null;
 
             String mimeType = getFileMimeType(uri);
-            String extension = getFileExtensionFromMimeType(mimeType);
-            if (extension == null) extension = "jpg"; // Mặc định là jpg nếu không xác định được
-            File file = new File(getCacheDir(), "temp_image_" + System.currentTimeMillis() + "." + extension);
+            String extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType) != null
+                    ? MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType) : "jpg";
+            File file = new File(getCacheDir(), "temp_" + System.currentTimeMillis() + "." + extension);
             OutputStream outputStream = new FileOutputStream(file);
             byte[] buffer = new byte[1024];
             int bytesRead;
@@ -337,14 +290,14 @@ public class ChatActivity extends AppCompatActivity {
 
             @Override
             public void onCancelled(DatabaseError error) {
-                Toast.makeText(ChatActivity.this, "Không thể tải thông tin người bạn: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(ChatActivity.this, "Lỗi tải thông tin", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
     private void loadMessages() {
         String chatId = getChatId(mAuth.getCurrentUser().getUid(), friendId);
-        messagesListener = new ValueEventListener() {
+        messagesListener = chatsRef.child(chatId).child("messages").addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
                 messageList.clear();
@@ -356,23 +309,109 @@ public class ChatActivity extends AppCompatActivity {
                     }
                 }
                 messageAdapter.notifyDataSetChanged();
-                if (!messageList.isEmpty()) {
-                    chatRecyclerView.scrollToPosition(messageList.size() - 1);
-                }
+                chatRecyclerView.scrollToPosition(messageList.size() - 1);
             }
 
             @Override
             public void onCancelled(DatabaseError error) {
-                Toast.makeText(ChatActivity.this, "Không thể tải tin nhắn: " + error.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(ChatActivity.this, "Lỗi tải tin nhắn", Toast.LENGTH_SHORT).show();
             }
-        };
-        chatsRef.child(chatId).child("messages").addValueEventListener(messagesListener);
+        });
     }
 
     private void sendMessage(String content, String imageUrl) {
         String chatId = getChatId(mAuth.getCurrentUser().getUid(), friendId);
-        Message message = new Message(mAuth.getCurrentUser().getUid(), content, System.currentTimeMillis(), imageUrl);
-        chatsRef.child(chatId).child("messages").push().setValue(message);
+        String messageId = chatsRef.child(chatId).child("messages").push().getKey();
+        Message message = new Message(mAuth.getCurrentUser().getUid(), friendId, content, System.currentTimeMillis(), imageUrl);
+        if (messageId != null) {
+            chatsRef.child(chatId).child("messages").child(messageId).setValue(message);
+        }
+    }
+
+    private void setupNotificationListener() {
+        String currentUserId = mAuth.getCurrentUser().getUid();
+        notificationListener = messagesRef.addChildEventListener(new ChildEventListener() {
+            @Override
+            public void onChildAdded(DataSnapshot dataSnapshot, String previousChildName) {
+                String chatId = dataSnapshot.getKey();
+                Log.d("Notification", "New message received for chatId: " + chatId);
+                String userId1 = chatId.split("_")[0];
+                String userId2 = chatId.split("_")[1];
+                String senderId = userId1.equals(currentUserId) ? userId2 : userId1;
+
+                for (DataSnapshot messageSnapshot : dataSnapshot.child("messages").getChildren()) {
+                    Message message = messageSnapshot.getValue(Message.class);
+                    if (message != null && message.receiverId != null && message.senderId != null &&
+                            message.receiverId.equals(currentUserId) && !message.senderId.equals(currentUserId)) {
+                        usersRef.child(message.senderId).addListenerForSingleValueEvent(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(DataSnapshot snapshot) {
+                                RegisterActivity.User sender = snapshot.getValue(RegisterActivity.User.class);
+                                if (sender != null) {
+                                    NotificationHelper.showNotification(
+                                            ChatActivity.this,
+                                            sender.username,
+                                            message.content != null ? message.content : "Đã gửi hình ảnh",
+                                            message.senderId
+                                    );
+                                }
+                            }
+
+                            @Override
+                            public void onCancelled(DatabaseError error) {}
+                        });
+                    } else {
+                        Log.w("Notification", "Skipping notification due to null senderId/receiverId or message mismatch");
+                    }
+                }
+            }
+
+            @Override
+            public void onChildChanged(DataSnapshot dataSnapshot, String previousChildName) {
+                String chatId = dataSnapshot.getKey();
+                Log.d("Notification", "Message changed for chatId: " + chatId);
+                String userId1 = chatId.split("_")[0];
+                String userId2 = chatId.split("_")[1];
+                String senderId = userId1.equals(currentUserId) ? userId2 : userId1;
+
+                DataSnapshot lastMessageSnapshot = null;
+                for (DataSnapshot messageSnapshot : dataSnapshot.child("messages").getChildren()) {
+                    lastMessageSnapshot = messageSnapshot;
+                }
+                if (lastMessageSnapshot != null) {
+                    Message message = lastMessageSnapshot.getValue(Message.class);
+                    if (message != null && message.receiverId != null && message.senderId != null &&
+                            message.receiverId.equals(currentUserId) && !message.senderId.equals(currentUserId)) {
+                        usersRef.child(message.senderId).addListenerForSingleValueEvent(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(DataSnapshot snapshot) {
+                                RegisterActivity.User sender = snapshot.getValue(RegisterActivity.User.class);
+                                if (sender != null) {
+                                    NotificationHelper.showNotification(
+                                            ChatActivity.this,
+                                            sender.username,
+                                            message.content != null ? message.content : "Đã gửi hình ảnh",
+                                            message.senderId
+                                    );
+                                }
+                            }
+
+                            @Override
+                            public void onCancelled(DatabaseError error) {}
+                        });
+                    } else {
+                        Log.w("Notification", "Skipping notification due to null senderId/receiverId or message mismatch in onChildChanged");
+                    }
+                }
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {}
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String previousChildName) {}
+            @Override
+            public void onCancelled(DatabaseError databaseError) {}
+        });
     }
 
     private String getChatId(String uid1, String uid2) {
@@ -386,30 +425,27 @@ public class ChatActivity extends AppCompatActivity {
             String chatId = getChatId(mAuth.getCurrentUser().getUid(), friendId);
             chatsRef.child(chatId).child("messages").removeEventListener(messagesListener);
         }
+        if (notificationListener != null) {
+            messagesRef.removeEventListener(notificationListener);
+        }
+        NotificationHelper.clearCurrentChatFriendId();
     }
 
     public static class Message {
-        public String senderId, content, imageUrl;
+        public String senderId, receiverId, content, imageUrl, messageId;
         public long timestamp;
         public Map<String, String> reactions;
-        public String messageId;
 
         public Message() {
             this.reactions = new HashMap<>();
         }
 
-        public Message(String senderId, String content, long timestamp, String imageUrl) {
+        public Message(String senderId, String receiverId, String content, long timestamp, String imageUrl) {
             this.senderId = senderId;
+            this.receiverId = receiverId;
             this.content = content;
             this.timestamp = timestamp;
             this.imageUrl = imageUrl;
-            this.reactions = new HashMap<>();
-        }
-
-        public Message(String senderId, String content, long timestamp) {
-            this.senderId = senderId;
-            this.content = content;
-            this.timestamp = timestamp;
             this.reactions = new HashMap<>();
         }
     }

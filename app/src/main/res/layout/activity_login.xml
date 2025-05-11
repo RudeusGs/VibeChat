@@ -5,29 +5,18 @@
     android:layout_height="match_parent"
     android:background="@color/colorBackground">
 
-    <ImageView
-        android:id="@+id/logoImageView"
-        android:layout_width="120dp"
-        android:layout_height="120dp"
-        android:layout_marginTop="64dp"
-        android:src="@drawable/chat_logo"
-        android:contentDescription="@string/app_logo"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
-
     <TextView
         android:id="@+id/titleTextView"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="32dp"
         android:text="@string/app_name"
         android:textColor="@color/colorPrimary"
-        android:textSize="28sp"
+        android:textSize="24sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/logoImageView" />
+        app:layout_constraintTop_toTopOf="parent" />
 
     <TextView
         android:id="@+id/subtitleTextView"
@@ -36,7 +25,7 @@
         android:layout_marginTop="8dp"
         android:text="@string/login_subtitle"
         android:textColor="@color/colorTextSecondary"
-        android:textSize="16sp"
+        android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/titleTextView" />
@@ -45,12 +34,12 @@
         android:id="@+id/loginCardView"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="24dp"
-        android:layout_marginTop="32dp"
-        android:layout_marginEnd="24dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginEnd="16dp"
         app:cardBackgroundColor="@color/colorSurface"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="4dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="2dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/subtitleTextView">
@@ -59,7 +48,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:padding="16dp">
 
             <com.google.android.material.textfield.TextInputLayout
                 android:id="@+id/emailInputLayout"
@@ -81,7 +70,7 @@
                 style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="12dp"
                 android:hint="@string/password"
                 app:endIconMode="password_toggle"
                 app:startIconDrawable="@drawable/ic_lock">
@@ -98,20 +87,20 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="end"
-                android:layout_marginTop="8dp"
+                android:layout_marginTop="4dp"
                 android:text="@string/forgot_password"
                 android:textColor="@color/colorPrimary"
-                android:textSize="14sp" />
+                android:textSize="12sp" />
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/loginButton"
                 android:layout_width="match_parent"
-                android:layout_height="56dp"
-                android:layout_marginTop="24dp"
+                android:layout_height="48dp"
+                android:layout_marginTop="16dp"
                 android:text="@string/login"
                 android:textAllCaps="false"
-                android:textSize="16sp"
-                app:cornerRadius="12dp" />
+                android:textSize="14sp"
+                app:cornerRadius="8dp" />
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
@@ -119,9 +108,9 @@
         android:id="@+id/socialLoginLayout"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="24dp"
-        android:layout_marginTop="24dp"
-        android:layout_marginEnd="24dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:layout_marginEnd="16dp"
         android:gravity="center"
         android:orientation="vertical"
         app:layout_constraintEnd_toEndOf="parent"
@@ -133,27 +122,27 @@
             android:layout_height="wrap_content"
             android:text="@string/or_continue_with"
             android:textColor="@color/colorTextSecondary"
-            android:textSize="14sp" />
+            android:textSize="12sp" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
+            android:layout_marginTop="12dp"
             android:gravity="center"
             android:orientation="horizontal">
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/googleLoginButton"
-                android:layout_width="60dp"
-                android:layout_height="60dp"
-                android:layout_marginEnd="16dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="12dp"
                 app:cardBackgroundColor="@color/colorSurface"
-                app:cardCornerRadius="12dp"
+                app:cardCornerRadius="8dp"
                 app:cardElevation="2dp">
 
                 <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:layout_gravity="center"
                     android:contentDescription="@string/google_login"
                     android:src="@drawable/ic_google" />
@@ -161,16 +150,16 @@
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/facebookLoginButton"
-                android:layout_width="60dp"
-                android:layout_height="60dp"
-                android:layout_marginEnd="16dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="12dp"
                 app:cardBackgroundColor="@color/colorSurface"
-                app:cardCornerRadius="12dp"
+                app:cardCornerRadius="8dp"
                 app:cardElevation="2dp">
 
                 <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:layout_gravity="center"
                     android:contentDescription="@string/facebook_login"
                     android:src="@drawable/ic_facebook" />
@@ -178,15 +167,15 @@
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/phoneLoginButton"
-                android:layout_width="60dp"
-                android:layout_height="60dp"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
                 app:cardBackgroundColor="@color/colorSurface"
-                app:cardCornerRadius="12dp"
+                app:cardCornerRadius="8dp"
                 app:cardElevation="2dp">
 
                 <ImageView
-                    android:layout_width="24dp"
-                    android:layout_height="24dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:layout_gravity="center"
                     android:contentDescription="@string/phone_login"
                     android:src="@drawable/ic_phone" />
@@ -197,7 +186,7 @@
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="32dp"
+        android:layout_marginBottom="24dp"
         android:gravity="center"
         android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -209,7 +198,7 @@
             android:layout_height="wrap_content"
             android:text="@string/dont_have_account"
             android:textColor="@color/colorTextSecondary"
-            android:textSize="16sp" />
+            android:textSize="14sp" />
 
         <TextView
             android:id="@+id/registerTextView"
@@ -218,7 +207,7 @@
             android:layout_marginStart="4dp"
             android:text="@string/register"
             android:textColor="@color/colorPrimary"
-            android:textSize="16sp"
+            android:textSize="14sp"
             android:textStyle="bold" />
     </LinearLayout>
 

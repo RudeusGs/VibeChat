@@ -1,12 +1,16 @@
 package com.rudeusgrey.vibechat;
 
+import android.Manifest;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
+import androidx.core.app.ActivityCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
@@ -16,23 +20,29 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.database.ChildEventListener;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
     private RecyclerView friendsRecyclerView, friendRequestsRecyclerView;
     private SearchView searchView;
     private TextView friendsHeaderTextView, requestsHeaderTextView;
     private FirebaseAuth mAuth;
-    private DatabaseReference friendsRef, friendRequestsRef, usersRef, chatsRef;
+    private DatabaseReference friendsRef, friendRequestsRef, usersRef, chatsRef, messagesRef;
     private List<Friend> friendList = new ArrayList<>();
     private List<Friend> filteredFriendList = new ArrayList<>();
     private List<FriendRequest> friendRequestList = new ArrayList<>();
     private FriendAdapter friendAdapter;
     private FriendRequestAdapter friendRequestAdapter;
+    private Map<String, ValueEventListener> chatListeners = new HashMap<>();
+    private ChildEventListener notificationListener;
+    private static final int REQUEST_NOTIFICATION_PERMISSION = 3;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,6 +60,7 @@ public class MainActivity extends AppCompatActivity {
         friendRequestsRef = FirebaseDatabase.getInstance().getReference("friend_requests").child(mAuth.getCurrentUser().getUid());
         usersRef = FirebaseDatabase.getInstance().getReference("users");
         chatsRef = FirebaseDatabase.getInstance().getReference("chats");
+        messagesRef = FirebaseDatabase.getInstance().getReference("chats");
 
         searchView = findViewById(R.id.searchView);
         friendsRecyclerView = findViewById(R.id.friendsRecyclerView);
@@ -66,6 +77,18 @@ public class MainActivity extends AppCompatActivity {
 
         friendsRecyclerView.setAdapter(friendAdapter);
         friendRequestsRecyclerView.setAdapter(friendRequestAdapter);
+
+        NotificationHelper.createNotificationChannel(this);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATION_PERMISSION);
+            } else {
+                setupNotificationListener();
+            }
+        } else {
+            setupNotificationListener();
+        }
 
         loadFriends();
         loadFriendRequests();
@@ -101,12 +124,26 @@ public class MainActivity extends AppCompatActivity {
         bottomNavigationView.setSelectedItemId(R.id.nav_chat);
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_NOTIFICATION_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                setupNotificationListener();
+            } else {
+                Log.w("MainActivity", "Notification permission denied");
+            }
+        }
+    }
+
     private void loadFriends() {
         friendsRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
                 friendList.clear();
                 filteredFriendList.clear();
+                chatListeners.clear();
+
                 for (DataSnapshot child : snapshot.getChildren()) {
                     String friendId = child.getKey();
                     usersRef.child(friendId).addListenerForSingleValueEvent(new ValueEventListener() {
@@ -115,13 +152,22 @@ public class MainActivity extends AppCompatActivity {
                             RegisterActivity.User user = userSnapshot.getValue(RegisterActivity.User.class);
                             if (user != null) {
                                 String chatId = getChatId(mAuth.getCurrentUser().getUid(), friendId);
-                                chatsRef.child(chatId).child("messages").orderByChild("timestamp").limitToLast(1).addValueEventListener(new ValueEventListener() {
+                                Friend friend = new Friend(friendId, user.username, "", "", false);
+                                int index = friendList.indexOf(friend);
+                                if (index == -1) {
+                                    friendList.add(friend);
+                                    filteredFriendList.add(friend);
+                                } else {
+                                    friendList.set(index, friend);
+                                    filteredFriendList.set(index, friend);
+                                }
+
+                                ValueEventListener chatListener = new ValueEventListener() {
                                     @Override
                                     public void onDataChange(DataSnapshot chatSnapshot) {
                                         String lastMessage = "";
                                         String timestamp = "";
                                         boolean isLastMessageFromMe = false;
-                                        Log.d("MainActivity", "Chat data for " + chatId + ": " + chatSnapshot.toString());
                                         if (chatSnapshot.hasChildren()) {
                                             DataSnapshot lastMsg = chatSnapshot.getChildren().iterator().next();
                                             lastMessage = lastMsg.child("content").getValue(String.class);
@@ -131,25 +177,14 @@ public class MainActivity extends AppCompatActivity {
                                             if (timestampValue != null) {
                                                 timestamp = formatTimestamp(timestampValue);
                                             }
-                                        } else {
-                                            Log.w("MainActivity", "No messages found for chatId: " + chatId);
                                         }
                                         Friend updatedFriend = new Friend(friendId, user.username, lastMessage, timestamp, isLastMessageFromMe);
-                                        int index = -1;
-                                        for (int i = 0; i < friendList.size(); i++) {
-                                            if (friendList.get(i).id.equals(friendId)) {
-                                                index = i;
-                                                break;
-                                            }
+                                        int updateIndex = friendList.indexOf(new Friend(friendId, user.username));
+                                        if (updateIndex >= 0) {
+                                            friendList.set(updateIndex, updatedFriend);
+                                            filteredFriendList.set(updateIndex, updatedFriend);
+                                            friendAdapter.notifyItemChanged(updateIndex);
                                         }
-                                        if (index >= 0) {
-                                            friendList.set(index, updatedFriend);
-                                            filteredFriendList.set(index, updatedFriend);
-                                        } else {
-                                            friendList.add(updatedFriend);
-                                            filteredFriendList.add(updatedFriend);
-                                        }
-                                        friendAdapter.notifyDataSetChanged();
                                         updateFriendsVisibility();
                                     }
 
@@ -157,7 +192,9 @@ public class MainActivity extends AppCompatActivity {
                                     public void onCancelled(DatabaseError error) {
                                         Log.e("MainActivity", "Error loading chat data: " + error.getMessage());
                                     }
-                                });
+                                };
+                                chatsRef.child(chatId).child("messages").orderByChild("timestamp").limitToLast(1).addValueEventListener(chatListener);
+                                chatListeners.put(chatId, chatListener);
                             }
                         }
 
@@ -206,7 +243,7 @@ public class MainActivity extends AppCompatActivity {
         boolean hasFriends = !friendList.isEmpty();
 
         friendsRecyclerView.setVisibility(hasFilteredFriends ? View.VISIBLE : View.GONE);
-        friendsHeaderTextView.setVisibility(View.VISIBLE);
+        friendsHeaderTextView.setVisibility(hasFriends ? View.VISIBLE : View.GONE);
 
         if (!hasFriends) {
             friendsHeaderTextView.setText("Bạn chưa có bạn bè");
@@ -250,31 +287,105 @@ public class MainActivity extends AppCompatActivity {
 
     private void acceptFriendRequest(String requesterId) {
         String currentUserUid = mAuth.getCurrentUser().getUid();
-        DatabaseReference currentUserRequestsRef = FirebaseDatabase.getInstance().getReference("friend_requests").child(currentUserUid);
-        currentUserRequestsRef.child(requesterId).addListenerForSingleValueEvent(new ValueEventListener() {
+        friendsRef.child(requesterId).setValue(true);
+        FirebaseDatabase.getInstance().getReference("friends").child(requesterId).child(currentUserUid).setValue(true);
+        friendRequestsRef.child(requesterId).removeValue();
+    }
+
+    private void rejectFriendRequest(String requesterId) {
+        friendRequestsRef.child(requesterId).removeValue();
+    }
+
+    private void setupNotificationListener() {
+        String currentUserId = mAuth.getCurrentUser().getUid();
+        notificationListener = messagesRef.addChildEventListener(new ChildEventListener() {
             @Override
-            public void onDataChange(DataSnapshot snapshot) {
-                if (snapshot.exists()) {
-                    friendsRef.child(requesterId).setValue(true);
-                    FirebaseDatabase.getInstance().getReference("friends").child(requesterId).child(currentUserUid).setValue(true);
-                    currentUserRequestsRef.child(requesterId).removeValue();
+            public void onChildAdded(DataSnapshot dataSnapshot, String previousChildName) {
+                String chatId = dataSnapshot.getKey();
+                Log.d("Notification", "New message received for chatId: " + chatId);
+                String userId1 = chatId.split("_")[0];
+                String userId2 = chatId.split("_")[1];
+                String senderId = userId1.equals(currentUserId) ? userId2 : userId1;
+
+                for (DataSnapshot messageSnapshot : dataSnapshot.child("messages").getChildren()) {
+                    ChatActivity.Message message = messageSnapshot.getValue(ChatActivity.Message.class);
+                    if (message != null && message.receiverId != null && message.senderId != null &&
+                            message.receiverId.equals(currentUserId) && !message.senderId.equals(currentUserId)) {
+                        usersRef.child(message.senderId).addListenerForSingleValueEvent(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(DataSnapshot snapshot) {
+                                RegisterActivity.User sender = snapshot.getValue(RegisterActivity.User.class);
+                                if (sender != null) {
+                                    NotificationHelper.showNotification(
+                                            MainActivity.this,
+                                            sender.username,
+                                            message.content != null ? message.content : "Đã gửi hình ảnh",
+                                            message.senderId
+                                    );
+                                }
+                            }
+
+                            @Override
+                            public void onCancelled(DatabaseError error) {}
+                        });
+                    } else {
+                        Log.w("Notification", "Skipping notification due to null senderId/receiverId or message mismatch");
+                    }
                 }
             }
 
             @Override
-            public void onCancelled(DatabaseError error) {}
-        });
-    }
+            public void onChildChanged(DataSnapshot dataSnapshot, String previousChildName) {
+                String chatId = dataSnapshot.getKey();
+                Log.d("Notification", "Message changed for chatId: " + chatId);
+                String userId1 = chatId.split("_")[0];
+                String userId2 = chatId.split("_")[1];
+                String senderId = userId1.equals(currentUserId) ? userId2 : userId1;
 
-    private void rejectFriendRequest(String requesterId) {
-        String currentUserUid = mAuth.getCurrentUser().getUid();
-        DatabaseReference currentUserRequestsRef = FirebaseDatabase.getInstance().getReference("friend_requests").child(currentUserUid);
-        currentUserRequestsRef.child(requesterId).removeValue();
+                DataSnapshot lastMessageSnapshot = null;
+                for (DataSnapshot messageSnapshot : dataSnapshot.child("messages").getChildren()) {
+                    lastMessageSnapshot = messageSnapshot;
+                }
+                if (lastMessageSnapshot != null) {
+                    ChatActivity.Message message = lastMessageSnapshot.getValue(ChatActivity.Message.class);
+                    if (message != null && message.receiverId != null && message.senderId != null &&
+                            message.receiverId.equals(currentUserId) && !message.senderId.equals(currentUserId)) {
+                        usersRef.child(message.senderId).addListenerForSingleValueEvent(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(DataSnapshot snapshot) {
+                                RegisterActivity.User sender = snapshot.getValue(RegisterActivity.User.class);
+                                if (sender != null) {
+                                    NotificationHelper.showNotification(
+                                            MainActivity.this,
+                                            sender.username,
+                                            message.content != null ? message.content : "Đã gửi hình ảnh",
+                                            message.senderId
+                                    );
+                                }
+                            }
+
+                            @Override
+                            public void onCancelled(DatabaseError error) {}
+                        });
+                    } else {
+                        Log.w("Notification", "Skipping notification due to null senderId/receiverId or message mismatch in onChildChanged");
+                    }
+                }
+            }
+
+            @Override
+            public void onChildRemoved(DataSnapshot dataSnapshot) {}
+            @Override
+            public void onChildMoved(DataSnapshot dataSnapshot, String previousChildName) {}
+            @Override
+            public void onCancelled(DatabaseError databaseError) {}
+        });
     }
 
     public static class Friend {
         public String id, username, lastMessage, timestamp;
         public boolean isLastMessageFromMe;
+        public boolean isImage;
 
         public Friend(String id, String username, String lastMessage, String timestamp, boolean isLastMessageFromMe) {
             this.id = id;
@@ -287,6 +398,19 @@ public class MainActivity extends AppCompatActivity {
         public Friend(String id, String username) {
             this(id, username, "", "", false);
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) return true;
+            if (obj == null || getClass() != obj.getClass()) return false;
+            Friend friend = (Friend) obj;
+            return id.equals(friend.id);
+        }
+
+        @Override
+        public int hashCode() {
+            return id.hashCode();
+        }
     }
 
     public static class FriendRequest {
@@ -295,6 +419,17 @@ public class MainActivity extends AppCompatActivity {
         public FriendRequest(String requesterId, String username) {
             this.requesterId = requesterId;
             this.username = username;
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        for (ValueEventListener listener : chatListeners.values()) {
+            chatsRef.removeEventListener(listener);
+        }
+        if (notificationListener != null) {
+            messagesRef.removeEventListener(notificationListener);
         }
     }
 }

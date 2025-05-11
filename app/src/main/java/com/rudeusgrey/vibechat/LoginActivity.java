@@ -31,23 +31,18 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        // Initialize Firebase Auth
         mAuth = FirebaseAuth.getInstance();
 
-        // Initialize UI components
         initializeUI();
 
-        // Set click listeners
         setClickListeners();
     }
 
     @Override
     protected void onStart() {
         super.onStart();
-        // Check if user is signed in and update UI accordingly
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null) {
-            // User is already signed in, go to MainActivity
             startActivity(new Intent(LoginActivity.this, MainActivity.class));
             finish();
         }
@@ -100,7 +95,6 @@ public class LoginActivity extends AppCompatActivity {
         String email = emailEditText.getText().toString().trim();
         String password = passwordEditText.getText().toString().trim();
 
-        // Validate input
         if (TextUtils.isEmpty(email)) {
             emailInputLayout.setError("Vui lòng nhập email");
             return;
@@ -123,12 +117,10 @@ public class LoginActivity extends AppCompatActivity {
                 .addOnCompleteListener(this, task -> {
                     progressBar.setVisibility(View.GONE);
                     if (task.isSuccessful()) {
-                        // Sign in success
                         Toast.makeText(LoginActivity.this, getString(R.string.login_success), Toast.LENGTH_SHORT).show();
                         startActivity(new Intent(LoginActivity.this, MainActivity.class));
                         finish();
                     } else {
-                        // If sign in fails, display a message to the user
                         String errorMessage = task.getException() != null ? task.getException().getMessage() :
                                 getString(R.string.login_failed);
                         Toast.makeText(LoginActivity.this, errorMessage, Toast.LENGTH_LONG).show();

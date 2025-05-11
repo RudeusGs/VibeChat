@@ -35,13 +35,10 @@ public class RegisterActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_register);
 
-        // Initialize Firebase Auth
         mAuth = FirebaseAuth.getInstance();
 
-        // Initialize UI components
         initializeUI();
 
-        // Set click listeners
         setClickListeners();
     }
 
@@ -82,23 +79,18 @@ public class RegisterActivity extends AppCompatActivity {
         String password = passwordEditText.getText().toString().trim();
         String confirmPassword = confirmPasswordEditText.getText().toString().trim();
 
-        // Validate input
         if (!validateInput(username, email, password, confirmPassword)) {
             return;
         }
 
-        // Show progress bar
         progressBar.setVisibility(View.VISIBLE);
 
-        // Create user with email and password
         mAuth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, task -> {
                     if (task.isSuccessful()) {
-                        // Registration success, save user data to database
                         String uid = mAuth.getCurrentUser().getUid();
                         saveUserToDatabase(uid, username, email);
                     } else {
-                        // If registration fails, display a message to the user
                         progressBar.setVisibility(View.GONE);
                         String errorMessage = task.getException() != null ? task.getException().getMessage() :
                                 getString(R.string.register_failed);
@@ -111,13 +103,11 @@ public class RegisterActivity extends AppCompatActivity {
     private boolean validateInput(String username, String email, String password, String confirmPassword) {
         boolean isValid = true;
 
-        // Reset errors
         usernameInputLayout.setError(null);
         emailInputLayout.setError(null);
         passwordInputLayout.setError(null);
         confirmPasswordInputLayout.setError(null);
 
-        // Check if fields are empty
         if (TextUtils.isEmpty(username)) {
             usernameInputLayout.setError("Vui lòng nhập tên người dùng");
             isValid = false;
@@ -177,9 +167,12 @@ public class RegisterActivity extends AppCompatActivity {
         public String photoUrl;
         public String status;
         public long createdAt;
+        public String fullName;
+        public String dateOfBirth;
+        public String gender;
 
         public User() {
-            // Default constructor required for Firebase
+
         }
 
         public User(String uid, String username, String email) {
@@ -189,6 +182,9 @@ public class RegisterActivity extends AppCompatActivity {
             this.photoUrl = "";
             this.status = "Hey, I'm using VibeChat!";
             this.createdAt = System.currentTimeMillis();
+            this.fullName = "";
+            this.dateOfBirth = "";
+            this.gender = "";
         }
     }
 }
