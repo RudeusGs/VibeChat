@@ -1,13 +1,17 @@
 package com.rudeusgrey.vibechat;
 
 import android.content.Context;
+import android.media.MediaPlayer;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.PopupWindow;
 import android.widget.TextView;
+import android.widget.Toast;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
@@ -32,6 +36,8 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
     private Map<String, String> userNameCache = new HashMap<>();
     private DatabaseReference chatsRef;
     private DatabaseReference groupsRef;
+    private MediaPlayer mediaPlayer;
+    private ImageButton currentPlayingButton;
 
     public MessageAdapter(List<ChatActivity.Message> messages, String currentUserId) {
         this.messages = messages;
@@ -51,6 +57,7 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         ChatActivity.Message message = messages.get(position);
         boolean isSentByCurrentUser = message.senderId.equals(currentUserId);
+
         if (isSentByCurrentUser) {
             holder.sentMessageLayout.setVisibility(View.VISIBLE);
             holder.receivedMessageLayout.setVisibility(View.GONE);
@@ -58,11 +65,20 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
             if (message.imageUrl != null) {
                 holder.sentImageView.setVisibility(View.VISIBLE);
                 holder.sentMessageTextView.setVisibility(View.GONE);
+                holder.sentAudioLayout.setVisibility(View.GONE);
                 Glide.with(holder.itemView.getContext())
                         .load(message.imageUrl)
                         .into(holder.sentImageView);
+            } else if (message.content != null && message.content.startsWith("Audio: ")) {
+                holder.sentImageView.setVisibility(View.GONE);
+                holder.sentMessageTextView.setVisibility(View.GONE);
+                holder.sentAudioLayout.setVisibility(View.VISIBLE);
+                holder.sentAudioLabel.setText("Voice message");
+                holder.sentPlayButton.setImageResource(R.drawable.ic_play);
+                holder.sentPlayButton.setOnClickListener(v -> playAudio(message.content.replace("Audio: ", ""), holder.sentPlayButton, holder.itemView.getContext()));
             } else {
                 holder.sentImageView.setVisibility(View.GONE);
+                holder.sentAudioLayout.setVisibility(View.GONE);
                 holder.sentMessageTextView.setVisibility(View.VISIBLE);
                 holder.sentMessageTextView.setText(message.content);
             }
@@ -77,6 +93,8 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
             } else {
                 holder.sentReactionImageView.setVisibility(View.GONE);
             }
+
+            holder.sentPinIcon.setVisibility(message.isPinned ? View.VISIBLE : View.GONE);
         } else {
             holder.sentMessageLayout.setVisibility(View.GONE);
             holder.receivedMessageLayout.setVisibility(View.VISIBLE);
@@ -84,11 +102,20 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
             if (message.imageUrl != null) {
                 holder.receivedImageView.setVisibility(View.VISIBLE);
                 holder.receivedMessageTextView.setVisibility(View.GONE);
+                holder.receivedAudioLayout.setVisibility(View.GONE);
                 Glide.with(holder.itemView.getContext())
                         .load(message.imageUrl)
                         .into(holder.receivedImageView);
+            } else if (message.content != null && message.content.startsWith("Audio: ")) {
+                holder.receivedImageView.setVisibility(View.GONE);
+                holder.receivedMessageTextView.setVisibility(View.GONE);
+                holder.receivedAudioLayout.setVisibility(View.VISIBLE);
+                holder.receivedAudioLabel.setText("Voice message");
+                holder.receivedPlayButton.setImageResource(R.drawable.ic_play);
+                holder.receivedPlayButton.setOnClickListener(v -> playAudio(message.content.replace("Audio: ", ""), holder.receivedPlayButton, holder.itemView.getContext()));
             } else {
                 holder.receivedImageView.setVisibility(View.GONE);
+                holder.receivedAudioLayout.setVisibility(View.GONE);
                 holder.receivedMessageTextView.setVisibility(View.VISIBLE);
                 holder.receivedMessageTextView.setText(message.content);
             }
@@ -125,17 +152,119 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
             } else {
                 holder.receivedReactionImageView.setVisibility(View.GONE);
             }
+
+            holder.receivedPinIcon.setVisibility(message.isPinned ? View.VISIBLE : View.GONE);
         }
 
         holder.itemView.setOnLongClickListener(v -> {
-            showReactionMenu(v.getContext(), message, holder.getAdapterPosition(), holder.itemView);
+            showMessageOptions(holder.itemView.getContext(), message, position, holder.itemView);
             return true;
         });
+    }
+
+    private void playAudio(String audioUrl, ImageButton playButton, Context context) {
+        // If the same button is clicked while playing, stop the audio
+        if (currentPlayingButton == playButton && mediaPlayer != null && mediaPlayer.isPlaying()) {
+            stopAudio(playButton);
+            return;
+        }
+
+        // Stop any ongoing playback
+        stopAudio(currentPlayingButton);
+
+        currentPlayingButton = playButton;
+        playButton.setImageResource(R.drawable.ic_stop); // Show stop icon while playing
+
+        try {
+            mediaPlayer = new MediaPlayer();
+            mediaPlayer.setDataSource(audioUrl);
+            mediaPlayer.setOnPreparedListener(mp -> {
+                mediaPlayer.start();
+            });
+            mediaPlayer.setOnCompletionListener(mp -> {
+                stopAudio(playButton);
+            });
+            mediaPlayer.setOnErrorListener((mp, what, extra) -> {
+                stopAudio(playButton);
+                Toast.makeText(context, "Không thể phát âm thanh", Toast.LENGTH_SHORT).show();
+                return true;
+            });
+            mediaPlayer.prepareAsync(); // Use async to avoid blocking the UI thread
+        } catch (Exception e) {
+            e.printStackTrace();
+            stopAudio(playButton);
+            Toast.makeText(context, "Lỗi phát âm thanh: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void stopAudio(ImageButton playButton) {
+        if (mediaPlayer != null) {
+            if (mediaPlayer.isPlaying()) {
+                mediaPlayer.stop();
+            }
+            mediaPlayer.reset();
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+        if (playButton != null) {
+            playButton.setImageResource(R.drawable.ic_play); // Revert to play icon
+        }
+        currentPlayingButton = null;
+    }
+
+    @Override
+    public void onDetachedFromRecyclerView(@NonNull RecyclerView recyclerView) {
+        super.onDetachedFromRecyclerView(recyclerView);
+        stopAudio(currentPlayingButton);
     }
 
     @Override
     public int getItemCount() {
         return messages.size();
+    }
+
+    private void showMessageOptions(Context context, ChatActivity.Message message, int position, View anchor) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle("Tùy chọn tin nhắn");
+
+        List<String> options = new ArrayList<>();
+        options.add("Thả cảm xúc");
+        options.add(message.isPinned ? "Bỏ ghim" : "Ghim");
+
+        builder.setItems(options.toArray(new String[0]), (dialog, which) -> {
+            if (which == 0) {
+                showReactionMenu(context, message, position, anchor);
+            } else if (which == 1) {
+                if (message.isPinned) {
+                    unpinMessage(message, position);
+                } else {
+                    pinMessage(message, position);
+                }
+            }
+        });
+
+        builder.setNegativeButton("Hủy", (dialog, which) -> dialog.dismiss());
+        builder.show();
+    }
+
+    private void pinMessage(ChatActivity.Message message, int position) {
+        String chatId = getChatId(currentUserId, message.senderId);
+        String messageId = message.messageId;
+        if (messageId != null) {
+            message.isPinned = true;
+            chatsRef.child(chatId).child("messages").child(messageId).child("isPinned").setValue(true);
+            notifyDataSetChanged();
+        }
+    }
+
+    private void unpinMessage(ChatActivity.Message message, int position) {
+        String chatId = getChatId(currentUserId, message.senderId);
+        String messageId = message.messageId;
+        if (messageId != null) {
+            message.isPinned = false;
+            chatsRef.child(chatId).child("messages").child(messageId).child("isPinned").setValue(false);
+            notifyDataSetChanged();
+        }
     }
 
     private void showReactionMenu(Context context, ChatActivity.Message message, int position, View anchor) {
@@ -264,24 +393,36 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
         ConstraintLayout receivedMessageLayout, sentMessageLayout;
+        ConstraintLayout receivedAudioLayout, sentAudioLayout;
         TextView receivedSenderTextView, receivedMessageTextView, receivedTimeTextView;
         TextView sentMessageTextView, sentTimeTextView;
+        TextView receivedAudioLabel, sentAudioLabel;
         ImageView receivedReactionImageView, sentReactionImageView;
         ImageView receivedImageView, sentImageView;
+        ImageView receivedPinIcon, sentPinIcon;
+        ImageButton receivedPlayButton, sentPlayButton;
 
         public ViewHolder(View itemView) {
             super(itemView);
             receivedMessageLayout = itemView.findViewById(R.id.receivedMessageLayout);
             sentMessageLayout = itemView.findViewById(R.id.sentMessageLayout);
+            receivedAudioLayout = itemView.findViewById(R.id.receivedAudioLayout);
+            sentAudioLayout = itemView.findViewById(R.id.sentAudioLayout);
             receivedSenderTextView = itemView.findViewById(R.id.receivedSenderTextView);
             receivedMessageTextView = itemView.findViewById(R.id.receivedMessageTextView);
             receivedTimeTextView = itemView.findViewById(R.id.receivedTimeTextView);
             sentMessageTextView = itemView.findViewById(R.id.sentMessageTextView);
             sentTimeTextView = itemView.findViewById(R.id.sentTimeTextView);
+            receivedAudioLabel = itemView.findViewById(R.id.receivedAudioLabel);
+            sentAudioLabel = itemView.findViewById(R.id.sentAudioLabel);
             receivedReactionImageView = itemView.findViewById(R.id.receivedReactionImageView);
             sentReactionImageView = itemView.findViewById(R.id.sentReactionImageView);
             receivedImageView = itemView.findViewById(R.id.receivedImageView);
             sentImageView = itemView.findViewById(R.id.sentImageView);
+            receivedPinIcon = itemView.findViewById(R.id.receivedPinIcon);
+            sentPinIcon = itemView.findViewById(R.id.sentPinIcon);
+            receivedPlayButton = itemView.findViewById(R.id.receivedPlayButton);
+            sentPlayButton = itemView.findViewById(R.id.sentPlayButton);
         }
     }
 }

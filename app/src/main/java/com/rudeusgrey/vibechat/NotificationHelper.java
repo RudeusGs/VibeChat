@@ -16,13 +16,15 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import java.util.HashSet;
+import java.util.Set;
 
 public class NotificationHelper {
     private static final String CHANNEL_ID = "VibeChatMessages";
     private static final String CHANNEL_NAME = "Tin nhắn VibeChat";
     private static final String CHANNEL_DESC = "Thông báo tin nhắn mới từ VibeChat";
-    private static final int NOTIFICATION_ID = 1;
     private static String currentChatFriendId = null;
+    private static final Set<String> processedMessageIds = new HashSet<>();
 
     public static void createNotificationChannel(Context context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -45,8 +47,12 @@ public class NotificationHelper {
         currentChatFriendId = null;
     }
 
-    public static void showNotification(Context context, String sender, String message, String senderId) {
-        // Không hiển thị thông báo nếu người dùng đang ở trong ChatActivity với sender này
+    public static void showNotification(Context context, String sender, String message, String senderId, String messageId) {
+        // Check if message has already been processed
+        if (processedMessageIds.contains(messageId)) {
+            return;
+        }
+
         if (currentChatFriendId != null && currentChatFriendId.equals(senderId)) {
             return;
         }
@@ -57,7 +63,6 @@ public class NotificationHelper {
             }
         }
 
-        // Lấy friendId từ senderId
         FirebaseDatabase.getInstance().getReference("users").child(senderId)
                 .addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
@@ -83,6 +88,7 @@ public class NotificationHelper {
 
                         NotificationManagerCompat notificationManager = NotificationManagerCompat.from(context);
                         try {
+                            processedMessageIds.add(messageId);
                             notificationManager.notify((int) System.currentTimeMillis(), builder.build());
                         } catch (SecurityException e) {
                             e.printStackTrace();
@@ -92,5 +98,9 @@ public class NotificationHelper {
                     @Override
                     public void onCancelled(DatabaseError error) {}
                 });
+    }
+
+    public static void clearProcessedMessageIds() {
+        processedMessageIds.clear();
     }
 }

@@ -4,6 +4,7 @@ import android.Manifest;
 import android.content.ContentResolver;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -32,6 +33,7 @@ import android.app.ProgressDialog;
 import android.util.Log;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
@@ -49,25 +51,30 @@ import okhttp3.Response;
 import org.json.JSONObject;
 
 public class ChatActivity extends AppCompatActivity {
-    private RecyclerView chatRecyclerView;
+    private RecyclerView chatRecyclerView, pinnedRecyclerView;
     private EditText messageEditText;
-    private ImageButton sendButton, attachButton;
+    private ImageButton sendButton, attachButton, recordButton;
     private ImageButton backButton, menuButton;
     private TextView chatNameTextView, statusTextView;
     private FirebaseAuth mAuth;
     private DatabaseReference chatsRef, usersRef, messagesRef, friendsRef;
     private List<Message> messageList = new ArrayList<>();
-    private MessageAdapter messageAdapter;
+    private List<Message> pinnedMessageList = new ArrayList<>();
+    private MessageAdapter messageAdapter, pinnedMessageAdapter;
     private String friendId;
     private static final int REQUEST_IMAGE_PICK = 1;
     private static final int REQUEST_STORAGE_PERMISSION = 2;
     private static final int REQUEST_NOTIFICATION_PERMISSION = 3;
+    private static final int REQUEST_RECORD_AUDIO_PERMISSION = 4;
     private ValueEventListener messagesListener;
     private ChildEventListener notificationListener;
     private final OkHttpClient client = new OkHttpClient();
     private static final String IMGUR_CLIENT_ID = "47065d1ba8ace09";
     private ProgressDialog progressDialog;
     private static final Set<String> SUPPORTED_MIME_TYPES = new HashSet<>();
+    private MediaRecorder mediaRecorder;
+    private String audioFilePath;
+    private boolean isRecording = false;
 
     static {
         SUPPORTED_MIME_TYPES.add("image/jpeg");
@@ -102,17 +109,25 @@ public class ChatActivity extends AppCompatActivity {
         }
 
         chatRecyclerView = findViewById(R.id.chatRecyclerView);
+        pinnedRecyclerView = findViewById(R.id.pinnedRecyclerView);
         messageEditText = findViewById(R.id.messageEditText);
         sendButton = findViewById(R.id.sendButton);
         attachButton = findViewById(R.id.attachButton);
+        recordButton = findViewById(R.id.recordButton);
         backButton = findViewById(R.id.backButton);
         menuButton = findViewById(R.id.menuButton);
         chatNameTextView = findViewById(R.id.chatNameTextView);
         statusTextView = findViewById(R.id.statusTextView);
 
+        // Setup main chat RecyclerView
         chatRecyclerView.setLayoutManager(new LinearLayoutManager(this));
         messageAdapter = new MessageAdapter(messageList, mAuth.getCurrentUser().getUid());
         chatRecyclerView.setAdapter(messageAdapter);
+
+        // Setup pinned messages RecyclerView
+        pinnedRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+        pinnedMessageAdapter = new MessageAdapter(pinnedMessageList, mAuth.getCurrentUser().getUid());
+        pinnedRecyclerView.setAdapter(pinnedMessageAdapter);
 
         NotificationHelper.createNotificationChannel(this);
         NotificationHelper.setCurrentChatFriendId(friendId);
@@ -139,8 +154,52 @@ public class ChatActivity extends AppCompatActivity {
         });
 
         attachButton.setOnClickListener(v -> requestStoragePermission());
+
+        recordButton.setOnClickListener(v -> {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        });
+
         backButton.setOnClickListener(v -> finish());
         menuButton.setOnClickListener(v -> showCreateGroupDialog());
+    }
+
+    private void startRecording() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, REQUEST_RECORD_AUDIO_PERMISSION);
+            return;
+        }
+
+        audioFilePath = getExternalCacheDir().getAbsolutePath() + "/audio_" + System.currentTimeMillis() + ".3gp";
+        mediaRecorder = new MediaRecorder();
+        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+        mediaRecorder.setOutputFile(audioFilePath);
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+
+        try {
+            mediaRecorder.prepare();
+            mediaRecorder.start();
+            Toast.makeText(this, "Đang ghi âm...", Toast.LENGTH_SHORT).show();
+            isRecording = true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(this, "Lỗi ghi âm", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void stopRecording() {
+        if (mediaRecorder != null) {
+            mediaRecorder.stop();
+            mediaRecorder.release();
+            mediaRecorder = null;
+            isRecording = false;
+            sendMessage("Audio: " + audioFilePath, null);
+            Toast.makeText(this, "Đã lưu âm thanh tại: " + audioFilePath, Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void showCreateGroupDialog() {
@@ -156,7 +215,6 @@ public class ChatActivity extends AppCompatActivity {
         FriendSelectAdapter friendSelectAdapter = new FriendSelectAdapter(friendSelectList);
         friendsRecyclerView.setAdapter(friendSelectAdapter);
 
-        // Load friends list from Firebase
         friendsRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
@@ -207,7 +265,6 @@ public class ChatActivity extends AppCompatActivity {
                 public void onGroupCreated(String groupId) {
                     Toast.makeText(ChatActivity.this, "Nhóm " + groupName + " đã được tạo thành công!", Toast.LENGTH_SHORT).show();
                     dialog.dismiss();
-                    // Optionally, navigate to the group chat screen
                 }
 
                 @Override
@@ -233,6 +290,12 @@ public class ChatActivity extends AppCompatActivity {
         } else if (requestCode == REQUEST_NOTIFICATION_PERMISSION) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 setupNotificationListener();
+            }
+        } else if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                startRecording();
+            } else {
+                Toast.makeText(this, "Quyền ghi âm bị từ chối", Toast.LENGTH_SHORT).show();
             }
         }
     }
@@ -351,7 +414,7 @@ public class ChatActivity extends AppCompatActivity {
             inputStream.close();
             outputStream.close();
             return file;
-        } catch (Exception e) {
+        } catch (IOException e) {
             e.printStackTrace();
             return null;
         }
@@ -381,15 +444,22 @@ public class ChatActivity extends AppCompatActivity {
             @Override
             public void onDataChange(DataSnapshot snapshot) {
                 messageList.clear();
+                pinnedMessageList.clear();
                 for (DataSnapshot child : snapshot.getChildren()) {
                     Message message = child.getValue(Message.class);
                     if (message != null) {
                         message.messageId = child.getKey();
-                        messageList.add(message);
+                        if (message.isPinned) {
+                            pinnedMessageList.add(message);
+                        } else {
+                            messageList.add(message);
+                        }
                     }
                 }
                 messageAdapter.notifyDataSetChanged();
+                pinnedMessageAdapter.notifyDataSetChanged();
                 chatRecyclerView.scrollToPosition(messageList.size() - 1);
+                pinnedRecyclerView.setVisibility(pinnedMessageList.isEmpty() ? View.GONE : View.VISIBLE);
             }
 
             @Override
@@ -423,6 +493,7 @@ public class ChatActivity extends AppCompatActivity {
                     Message message = messageSnapshot.getValue(Message.class);
                     if (message != null && message.receiverId != null && message.senderId != null &&
                             message.receiverId.equals(currentUserId) && !message.senderId.equals(currentUserId)) {
+                        String messageId = messageSnapshot.getKey();
                         usersRef.child(message.senderId).addListenerForSingleValueEvent(new ValueEventListener() {
                             @Override
                             public void onDataChange(DataSnapshot snapshot) {
@@ -431,8 +502,9 @@ public class ChatActivity extends AppCompatActivity {
                                     NotificationHelper.showNotification(
                                             ChatActivity.this,
                                             sender.username,
-                                            message.content != null ? message.content : "Đã gửi hình ảnh",
-                                            message.senderId
+                                            message.content != null ? message.content : (message.imageUrl != null ? "Đã gửi hình ảnh" : "Đã gửi âm thanh"),
+                                            message.senderId,
+                                            messageId
                                     );
                                 }
                             }
@@ -440,8 +512,6 @@ public class ChatActivity extends AppCompatActivity {
                             @Override
                             public void onCancelled(DatabaseError error) {}
                         });
-                    } else {
-                        Log.w("Notification", "Skipping notification due to null senderId/receiverId or message mismatch");
                     }
                 }
             }
@@ -454,14 +524,11 @@ public class ChatActivity extends AppCompatActivity {
                 String userId2 = chatId.split("_")[1];
                 String senderId = userId1.equals(currentUserId) ? userId2 : userId1;
 
-                DataSnapshot lastMessageSnapshot = null;
                 for (DataSnapshot messageSnapshot : dataSnapshot.child("messages").getChildren()) {
-                    lastMessageSnapshot = messageSnapshot;
-                }
-                if (lastMessageSnapshot != null) {
-                    Message message = lastMessageSnapshot.getValue(Message.class);
+                    Message message = messageSnapshot.getValue(Message.class);
                     if (message != null && message.receiverId != null && message.senderId != null &&
                             message.receiverId.equals(currentUserId) && !message.senderId.equals(currentUserId)) {
+                        String messageId = messageSnapshot.getKey();
                         usersRef.child(message.senderId).addListenerForSingleValueEvent(new ValueEventListener() {
                             @Override
                             public void onDataChange(DataSnapshot snapshot) {
@@ -470,8 +537,9 @@ public class ChatActivity extends AppCompatActivity {
                                     NotificationHelper.showNotification(
                                             ChatActivity.this,
                                             sender.username,
-                                            message.content != null ? message.content : "Đã gửi hình ảnh",
-                                            message.senderId
+                                            message.content != null ? message.content : (message.imageUrl != null ? "Đã gửi hình ảnh" : "Đã gửi âm thanh"),
+                                            message.senderId,
+                                            messageId
                                     );
                                 }
                             }
@@ -479,8 +547,6 @@ public class ChatActivity extends AppCompatActivity {
                             @Override
                             public void onCancelled(DatabaseError error) {}
                         });
-                    } else {
-                        Log.w("Notification", "Skipping notification due to null senderId/receiverId or message mismatch in onChildChanged");
                     }
                 }
             }
@@ -509,15 +575,22 @@ public class ChatActivity extends AppCompatActivity {
             messagesRef.removeEventListener(notificationListener);
         }
         NotificationHelper.clearCurrentChatFriendId();
+        NotificationHelper.clearProcessedMessageIds();
+        if (mediaRecorder != null) {
+            mediaRecorder.release();
+            mediaRecorder = null;
+        }
     }
 
     public static class Message {
         public String senderId, receiverId, content, imageUrl, messageId;
         public long timestamp;
         public Map<String, String> reactions;
+        public boolean isPinned;
 
         public Message() {
             this.reactions = new HashMap<>();
+            this.isPinned = false;
         }
 
         public Message(String senderId, String receiverId, String content, long timestamp, String imageUrl) {
@@ -527,6 +600,7 @@ public class ChatActivity extends AppCompatActivity {
             this.timestamp = timestamp;
             this.imageUrl = imageUrl;
             this.reactions = new HashMap<>();
+            this.isPinned = false;
         }
     }
 }

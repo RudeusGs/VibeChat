@@ -71,6 +71,33 @@
                     android:scaleType="fitCenter"
                     android:visibility="gone" />
 
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/receivedAudioLayout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone">
+
+                    <ImageButton
+                        android:id="@+id/receivedPlayButton"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_play"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                    <TextView
+                        android:id="@+id/receivedAudioLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Voice message"
+                        android:textColor="@color/colorTextPrimary"
+                        android:textSize="16sp"
+                        app:layout_constraintStart_toEndOf="@id/receivedPlayButton"
+                        app:layout_constraintTop_toTopOf="@id/receivedPlayButton"
+                        app:layout_constraintBottom_toBottomOf="@id/receivedPlayButton" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
                 <TextView
                     android:id="@+id/receivedTimeTextView"
                     android:layout_width="wrap_content"
@@ -89,6 +116,15 @@
             android:visibility="gone"
             app:layout_constraintStart_toStartOf="@id/receivedMessageCard"
             app:layout_constraintTop_toBottomOf="@id/receivedMessageCard" />
+
+        <ImageView
+            android:id="@+id/receivedPinIcon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_pin"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="@id/receivedMessageCard"
+            app:layout_constraintTop_toTopOf="@id/receivedMessageCard" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <!-- Tin nhắn từ người dùng hiện tại -->
@@ -136,6 +172,33 @@
                     android:scaleType="fitCenter"
                     android:visibility="gone" />
 
+                <androidx.constraintlayout.widget.ConstraintLayout
+                    android:id="@+id/sentAudioLayout"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:visibility="gone">
+
+                    <ImageButton
+                        android:id="@+id/sentPlayButton"
+                        android:layout_width="40dp"
+                        android:layout_height="40dp"
+                        android:background="?attr/selectableItemBackgroundBorderless"
+                        android:src="@drawable/ic_play"
+                        app:layout_constraintStart_toStartOf="parent"
+                        app:layout_constraintTop_toTopOf="parent" />
+
+                    <TextView
+                        android:id="@+id/sentAudioLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Voice message"
+                        android:textColor="@color/colorSurface"
+                        android:textSize="16sp"
+                        app:layout_constraintStart_toEndOf="@id/sentPlayButton"
+                        app:layout_constraintTop_toTopOf="@id/sentPlayButton"
+                        app:layout_constraintBottom_toBottomOf="@id/sentPlayButton" />
+                </androidx.constraintlayout.widget.ConstraintLayout>
+
                 <TextView
                     android:id="@+id/sentTimeTextView"
                     android:layout_width="wrap_content"
@@ -155,6 +218,15 @@
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="@id/sentMessageCard"
             app:layout_constraintTop_toBottomOf="@id/sentMessageCard" />
+
+        <ImageView
+            android:id="@+id/sentPinIcon"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:src="@drawable/ic_pin"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="@id/sentMessageCard"
+            app:layout_constraintTop_toTopOf="@id/sentMessageCard" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
