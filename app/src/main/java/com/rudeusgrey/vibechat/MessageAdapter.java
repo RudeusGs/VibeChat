@@ -18,6 +18,7 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -30,12 +31,14 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
     private DatabaseReference usersRef;
     private Map<String, String> userNameCache = new HashMap<>();
     private DatabaseReference chatsRef;
+    private DatabaseReference groupsRef;
 
     public MessageAdapter(List<ChatActivity.Message> messages, String currentUserId) {
         this.messages = messages;
         this.currentUserId = currentUserId;
         this.usersRef = FirebaseDatabase.getInstance().getReference("users");
         this.chatsRef = FirebaseDatabase.getInstance().getReference("chats");
+        this.groupsRef = FirebaseDatabase.getInstance().getReference("groups");
     }
 
     @Override
@@ -223,6 +226,40 @@ public class MessageAdapter extends RecyclerView.Adapter<MessageAdapter.ViewHold
 
     private String getChatId(String uid1, String uid2) {
         return uid1.compareTo(uid2) < 0 ? uid1 + "_" + uid2 : uid2 + "_" + uid1;
+    }
+
+    public void createGroupChat(String groupName, List<String> memberIds, OnGroupCreatedListener listener) {
+        String groupId = groupsRef.push().getKey();
+        if (groupId == null) {
+            listener.onGroupCreationFailed("Failed to generate group ID");
+            return;
+        }
+
+        if (!memberIds.contains(currentUserId)) {
+            memberIds.add(currentUserId);
+        }
+
+        Map<String, Object> groupData = new HashMap<>();
+        groupData.put("groupName", groupName);
+        groupData.put("createdAt", System.currentTimeMillis());
+        groupData.put("members", memberIds);
+
+        groupsRef.child(groupId).setValue(groupData, (error, ref) -> {
+            if (error != null) {
+                listener.onGroupCreationFailed(error.getMessage());
+            } else {
+                listener.onGroupCreated(groupId);
+            }
+        });
+
+        for (String memberId : memberIds) {
+            usersRef.child(memberId).child("groups").child(groupId).setValue(true);
+        }
+    }
+
+    public interface OnGroupCreatedListener {
+        void onGroupCreated(String groupId);
+        void onGroupCreationFailed(String errorMessage);
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {

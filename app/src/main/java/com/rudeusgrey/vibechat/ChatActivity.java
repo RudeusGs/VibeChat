@@ -15,6 +15,7 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -54,7 +55,7 @@ public class ChatActivity extends AppCompatActivity {
     private ImageButton backButton, menuButton;
     private TextView chatNameTextView, statusTextView;
     private FirebaseAuth mAuth;
-    private DatabaseReference chatsRef, usersRef, messagesRef;
+    private DatabaseReference chatsRef, usersRef, messagesRef, friendsRef;
     private List<Message> messageList = new ArrayList<>();
     private MessageAdapter messageAdapter;
     private String friendId;
@@ -92,6 +93,7 @@ public class ChatActivity extends AppCompatActivity {
         chatsRef = FirebaseDatabase.getInstance().getReference("chats");
         usersRef = FirebaseDatabase.getInstance().getReference("users");
         messagesRef = FirebaseDatabase.getInstance().getReference("chats");
+        friendsRef = FirebaseDatabase.getInstance().getReference("friends").child(mAuth.getCurrentUser().getUid());
         friendId = getIntent().getStringExtra("friendId");
         if (friendId == null) {
             Toast.makeText(this, "Không tìm thấy ID người bạn", Toast.LENGTH_SHORT).show();
@@ -138,7 +140,85 @@ public class ChatActivity extends AppCompatActivity {
 
         attachButton.setOnClickListener(v -> requestStoragePermission());
         backButton.setOnClickListener(v -> finish());
-        menuButton.setOnClickListener(v -> Toast.makeText(ChatActivity.this, "Tính năng menu đang được phát triển", Toast.LENGTH_SHORT).show());
+        menuButton.setOnClickListener(v -> showCreateGroupDialog());
+    }
+
+    private void showCreateGroupDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        View dialogView = getLayoutInflater().inflate(R.layout.create_group_dialog, null);
+        builder.setView(dialogView);
+
+        EditText groupNameEditText = dialogView.findViewById(R.id.groupNameEditText);
+        RecyclerView friendsRecyclerView = dialogView.findViewById(R.id.friendsRecyclerView);
+        friendsRecyclerView.setLayoutManager(new LinearLayoutManager(this));
+
+        List<FriendSelectAdapter.FriendSelectItem> friendSelectList = new ArrayList<>();
+        FriendSelectAdapter friendSelectAdapter = new FriendSelectAdapter(friendSelectList);
+        friendsRecyclerView.setAdapter(friendSelectAdapter);
+
+        // Load friends list from Firebase
+        friendsRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                friendSelectList.clear();
+                for (DataSnapshot child : snapshot.getChildren()) {
+                    String friendId = child.getKey();
+                    usersRef.child(friendId).addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot userSnapshot) {
+                            RegisterActivity.User user = userSnapshot.getValue(RegisterActivity.User.class);
+                            if (user != null) {
+                                friendSelectList.add(new FriendSelectAdapter.FriendSelectItem(friendId, user.username));
+                                friendSelectAdapter.notifyDataSetChanged();
+                            }
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError error) {
+                            Toast.makeText(ChatActivity.this, "Lỗi tải danh sách bạn bè", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(ChatActivity.this, "Lỗi tải danh sách bạn bè", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        AlertDialog dialog = builder.create();
+
+        dialogView.findViewById(R.id.createButton).setOnClickListener(v -> {
+            String groupName = groupNameEditText.getText().toString().trim();
+            if (groupName.isEmpty()) {
+                Toast.makeText(ChatActivity.this, "Vui lòng nhập tên nhóm", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            List<String> selectedFriendIds = friendSelectAdapter.getSelectedFriendIds();
+            if (selectedFriendIds.isEmpty()) {
+                Toast.makeText(ChatActivity.this, "Vui lòng chọn ít nhất một người bạn", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            messageAdapter.createGroupChat(groupName, selectedFriendIds, new MessageAdapter.OnGroupCreatedListener() {
+                @Override
+                public void onGroupCreated(String groupId) {
+                    Toast.makeText(ChatActivity.this, "Nhóm " + groupName + " đã được tạo thành công!", Toast.LENGTH_SHORT).show();
+                    dialog.dismiss();
+                    // Optionally, navigate to the group chat screen
+                }
+
+                @Override
+                public void onGroupCreationFailed(String errorMessage) {
+                    Toast.makeText(ChatActivity.this, "Lỗi: " + errorMessage, Toast.LENGTH_SHORT).show();
+                }
+            });
+        });
+
+        dialogView.findViewById(R.id.cancelButton).setOnClickListener(v -> dialog.dismiss());
+        dialog.show();
     }
 
     @Override

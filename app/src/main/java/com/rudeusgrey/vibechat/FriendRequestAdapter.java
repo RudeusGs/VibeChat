@@ -38,13 +38,13 @@ public class FriendRequestAdapter extends RecyclerView.Adapter<FriendRequestAdap
         holder.acceptButton.setOnClickListener(v -> {
             Log.d("FriendRequestAdapter", "Accept clicked for: " + request.requesterId);
             onAcceptClick.accept(request.requesterId);
-            removeItem(position); // Xóa item sau khi đồng ý
+            removeItem(position);
         });
 
         holder.rejectButton.setOnClickListener(v -> {
             Log.d("FriendRequestAdapter", "Reject clicked for: " + request.requesterId);
             onRejectClick.accept(request.requesterId);
-            removeItem(position); // Xóa item sau khi từ chối
+            removeItem(position);
         });
     }
 
@@ -53,16 +53,14 @@ public class FriendRequestAdapter extends RecyclerView.Adapter<FriendRequestAdap
         return friendRequests.size();
     }
 
-    // Phương thức để xóa item và cập nhật RecyclerView
     private void removeItem(int position) {
         if (position >= 0 && position < friendRequests.size()) {
             friendRequests.remove(position);
             notifyItemRemoved(position);
-            notifyItemRangeChanged(position, friendRequests.size()); // Cập nhật các vị trí còn lại
+            notifyItemRangeChanged(position, friendRequests.size());
         }
     }
 
-    // Phương thức để cập nhật danh sách yêu cầu bạn bè
     public void updateRequests(List<MainActivity.FriendRequest> newRequests) {
         this.friendRequests.clear();
         this.friendRequests.addAll(newRequests);

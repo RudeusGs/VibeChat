@@ -109,10 +109,8 @@ public class LoginActivity extends AppCompatActivity {
             passwordInputLayout.setError(null);
         }
 
-        // Show progress bar
         progressBar.setVisibility(View.VISIBLE);
 
-        // Sign in with email and password
         mAuth.signInWithEmailAndPassword(email, password)
                 .addOnCompleteListener(this, task -> {
                     progressBar.setVisibility(View.GONE);
