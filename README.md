@@ -94,5 +94,5 @@
 
 ### 1) Clone project
 ```bash
-git clone https://github.com/<your-username>/vibechat.git
+git clone https://github.com/RudeusGs/vibechat.git
 cd vibechat
